@@ -25,6 +25,8 @@ import (
 )
 
 type Server struct {
+	shareMu       sync.Mutex
+	shareServer   *http.Server
 	PickKeyFile   func() (string, error)
 	pickerMu      sync.Mutex
 	StartupImport *sshconfig.StartupResult
@@ -53,6 +55,7 @@ func New(store *database.Store, ssh sshclient.Connector, tm *tunnel.Manager, ori
 	return &Server{OpenURL: platform.OpenBrowser, Store: store, SSH: ssh, Tunnels: tm, Origin: origin, token: hex.EncodeToString(b), templates: t, terminals: map[string]context.CancelFunc{}}, nil
 }
 func (s *Server) Close() {
+	s.stopSharing()
 	s.mu.Lock()
 	s.closed = true
 	for _, cancel := range s.terminals {
@@ -82,6 +85,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/hosts/{id}/check", s.checkHost)
 	mux.HandleFunc("POST /api/keys/{id}/check", s.checkKey)
 	mux.HandleFunc("POST /api/keys/pick-file", s.pickKeyFile)
+	mux.HandleFunc("GET /api/sharing", s.sharingStatus)
+	mux.HandleFunc("POST /api/sharing/{action}", s.sharingAction)
 	mux.HandleFunc("POST /api/services/{id}/open", s.openService)
 	mux.HandleFunc("POST /api/import/preview", s.preview)
 	mux.HandleFunc("POST /api/import/apply", s.importConfig)

@@ -2,6 +2,7 @@
 
 - Build a Windows-first, local-only SSH/Bastion/Tunnel desktop agent in Go. Embed HTML, CSS, JavaScript and xterm.js; no Node/React application or runtime CDN.
 - Bind HTTP and local tunnels only to 127.0.0.1. Validate HTTP Host, Origin, CSRF tokens and WebSocket Origin. Verify SSH server keys using known_hosts or explicitly verified SHA256 fingerprints.
+- Exception: an explicitly enabled, separate team-download listener uses IPv4 TCP 9877 for same-subnet peers. It exposes only a landing page, executable and configuration export, never management APIs, terminals or key contents. Keep the management listener and forwarded ports on loopback. Windows inbound rules must restrict port 9877 to LocalSubnet. Show Team sharing below Settings; default sharing off, with optional -share startup flag.
 - Store private-key file paths only, never passwords, key contents or passphrases. Do not modify the user's SSH config or known_hosts automatically.
 - Key registration supports manual paths and a native Windows file picker. Selection returns only the local path, cancellation preserves the field, and saving retains key validation; never upload or copy key contents.
 - Keep OS-specific browser launching and data directory selection in internal/platform. Use interfaces for SSH and tunnel tests.

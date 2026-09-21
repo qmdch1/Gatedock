@@ -56,6 +56,18 @@ Tunnels에서 포트 연결과 웹 바로가기를 함께 관리합니다. 기�
 
 가져오기는 기존 항목을 덮어쓰지 않습니다. 동일 항목은 건너뛰고, 충돌이 있으면 오류를 표시합니다. 설정파일에는 내부 주소와 계정명이 포함되므로 공개 저장소에는 올리지 마세요.
 
+## 로컬망 다운로드 페이지
+
+Settings 아래 **팀 공유 → 공유 시작**을 누르면 같은 로컬망의 팀원이 `http://공유-PC-IP:9877`에 접속해 실행파일과 현재 설정파일을 받을 수 있습니다. 관리 화면과 터미널은 공유되지 않으며 개인 키 파일도 포함되지 않습니다. 설정파일에는 내부 주소·계정명·키 경로가 포함되므로 신뢰하는 로컬망에서 사용하세요.
+
+Windows 방화벽에 다음 인바운드 규칙이 필요합니다. 관리자 PowerShell에서 실행합니다.
+
+```powershell
+New-NetFirewallRule -Name "SSHDesk-Team-Downloads-9877" -DisplayName "SSHDesk Team Downloads (Local Subnet)" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 9877 -RemoteAddress LocalSubnet -Profile Domain,Private,Public
+```
+
+공유는 기본적으로 꺼져 있습니다. 앱을 종료하면 공유도 종료되며, 실행할 때부터 켜려면 `sshdesk.exe -share`를 사용하세요. 회사 네트워크의 장치 간 통신 제한이 있으면 별도 네트워크 허용이 필요할 수 있습니다.
+
 ## 실행 옵션
 
 ```powershell
@@ -76,7 +88,7 @@ Tunnels에서 포트 연결과 웹 바로가기를 함께 관리합니다. 기�
 
 ## 지원 범위
 
-Windows를 우선 지원하며, 실행 시 별도의 SSH 클라이언트나 Node.js 설치가 필요하지 않습니다. 관리 화면과 터널은 로컬 PC에서만 접근할 수 있습니다.
+Windows를 우선 지원하며, 실행 시 별도의 SSH 클라이언트나 Node.js 설치가 필요하지 않습니다. 관리 화면과 터널은 로컬 PC에서만 접근할 수 있고, 명시적으로 켠 다운로드 페이지만 같은 로컬망에 공유됩니다.
 
 현재 암호가 설정된 개인 키, SSH agent, 하드웨어 키, SSH 인증서, SFTP, 원격 포워딩 및 SOCKS는 지원하지 않습니다. SSH config의 일부 고급 설정도 지원하지 않으며 가져오기 화면에서 확인할 수 있습니다. 팀 공유는 설정파일 전달 방식이며 중앙 계정·권한 관리 기능은 제공하지 않습니다.
 

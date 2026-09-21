@@ -38,6 +38,7 @@ const pages = {
   terminal: ["Terminal", "브라우저에서 바로 연결하는 SSH 터미널."],
   keys: ["Keys", "키는 내 컴퓨터에. SSHDesk에는 파일 경로만 저장됩니다."],
   settings: ["Settings", "로컬 워크스페이스와 SSH 설정을 관리하세요."],
+  sharing: ["팀 공유", "같은 로컬망의 팀원이 실행파일과 설정을 다운로드합니다."],
 };
 const env = (v) => `<span class="env env-${esc(v)}">${esc(v)}</span>`;
 const status = (v) =>
@@ -131,6 +132,7 @@ function renderPage() {
   }
   if (current === "dashboard") dashboard();
   else if (current === "settings") settings();
+  else if (current === "sharing") sharing();
   else if (current === "terminal") {
     if (!terminalHost)
       $("#content").innerHTML = panel(
@@ -269,6 +271,20 @@ function settings() {
       toast(e.message, true);
     }
   };
+}
+async function sharing() {
+  const content = $("#content");
+  content.innerHTML = panel("팀 다운로드 페이지", "", '<div class="panel-body">공유 상태 확인 중…</div>');
+  try {
+    const info = await api("sharing");
+    if (current !== "sharing") return;
+    content.innerHTML = panel("팀 다운로드 페이지", info.enabled ? "공유 중" : "공유 꺼짐", `<div class="panel-body"><p>공유를 켜면 같은 로컬망에서 실행파일과 현재 설정파일을 다운로드할 수 있습니다. 설정에는 내부 주소·계정명·키 경로가 포함됩니다.</p><p>개인 키, 관리 화면, 터미널은 공유하지 않습니다. 앱을 종료하면 공유도 종료됩니다.</p>${info.urls.map((url) => `<p><a href="${esc(url)}" target="_blank" rel="noreferrer">${esc(url)}</a></p>`).join("") || '<p>사용 가능한 로컬망 주소가 없습니다.</p>'}<button type="button" id="share-toggle" class="primary">${info.enabled ? "공유 중지" : "공유 시작"}</button><p class="muted">Windows 방화벽에서 TCP 9877 포트를 로컬 서브넷에 허용해야 합니다. 같은 PC의 관리 화면은 127.0.0.1:9876에서 사용합니다.</p></div>`);
+    $("#share-toggle").onclick = async (event) => {
+      event.currentTarget.disabled = true;
+      try { await api("sharing/" + (info.enabled ? "stop" : "start"), "POST"); await sharing(); }
+      catch (err) { toast(err.message, true); event.currentTarget.disabled = false; }
+    };
+  } catch (err) { if (current === "sharing") content.textContent = err.message; }
 }
 const schemas = {
   hosts: [

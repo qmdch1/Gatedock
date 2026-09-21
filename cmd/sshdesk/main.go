@@ -36,6 +36,7 @@ func run() error {
 	port := flag.Int("port", 9876, "local HTTP port")
 	noBrowser := flag.Bool("no-browser", false, "disable automatic browser opening")
 	noImport := flag.Bool("no-auto-import", false, "disable startup SSH config import")
+	share := flag.Bool("share", false, "enable local-network download page on port 9877")
 	flag.Parse()
 	if !model.Port(*port) {
 		return errors.New("invalid HTTP port")
@@ -73,6 +74,11 @@ func run() error {
 	}
 	defer app.Close()
 	app.StartupImport = &startup
+	if *share {
+		if e = app.StartSharing(); e != nil {
+			return e
+		}
+	}
 	server := &http.Server{Handler: app.Handler(), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 32 * 1024}
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()
