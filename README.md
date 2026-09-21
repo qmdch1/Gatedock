@@ -2,6 +2,8 @@
 
 Windows에서 개발자가 SSH, Bastion, 다중 Jump Host, Local Port Forwarding을 로컬 웹 UI로 관리하는 단일 실행파일 애플리케이션입니다. 외부 `ssh.exe`, Node.js, React, CDN 없이 동작합니다.
 
+관리 화면은 흰색 배경과 진한 글자의 밝은 테마를 사용하며, 터미널 출력 영역은 어두운 배경을 유지합니다.
+
 ## 빠른 시작 / Windows 설치
 
 1. 빌드된 `sshdesk.exe`를 로컬 폴더에 둡니다. 별도 설치나 관리자 권한은 필요하지 않습니다.

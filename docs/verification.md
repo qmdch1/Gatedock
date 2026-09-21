@@ -6,8 +6,8 @@
 
 - Go 1.27.1, Linux amd64 (WSL Ubuntu 26.04), Windows amd64
 - Linux native build: `dist/sshdesk`
-- Windows native executable: `sshdesk.exe`, 15,869,952 bytes (약 15.1 MiB)
-- Windows SHA256: `400C603B6131950B912076855DE6C2DCCFF844090DE4E7D5BC5C2166E7B9DD21`
+- Windows native executable: `sshdesk.exe`, 15,870,464 bytes (약 15.1 MiB)
+- Windows SHA256: `BF78AB0F9C981AA0B05DBB2AEE36EB27EEB119372F10C8EA7675F87F87B1C09B`
 - CGO disabled Windows build, SQLite / HTML / CSS / JavaScript / xterm.js 내장
 - Node.js는 개발 중 문법 확인/포맷에만 사용했습니다. 프로젝트 실행·빌드에 npm 설치나 프런트엔드 빌드는 필요하지 않습니다.
 
@@ -55,6 +55,8 @@ Windows에서 통과한 패키지는 `database`, `model`, `sshconfig`, `sshclien
 - **Linux**: `dist/sshdesk -no-browser -port 9877` 실행 및 동일 health 응답 확인. SIGINT로 테스트 프로세스 종료.
 
 ## 브라우저 UI 검수
+
+밝은 관리 화면 테마 변경 후 Windows 실행파일을 다시 빌드하고 재시작했습니다. 브라우저에서 대시보드와 Host 추가 창의 흰색 표면, 진한 글자, 입력창 테두리를 시각적으로 확인했습니다. 터미널 출력 영역의 어두운 배경은 유지했습니다.
 
 Windows의 실제 에이전트를 브라우저에서 열어 Dashboard를 시각적으로 확인했습니다. 별도 테스트 데이터 디렉터리에서 임시 키 등록, Host 등록/STG 표시, Tunnel 등록, Service 카드 생성, Terminal 선택, xterm 렌더링, 연결 거절 메시지 및 Reconnect/Disconnect UI를 확인했습니다. 해당 화면에서 브라우저 JavaScript error/warn은 없었습니다.
 
