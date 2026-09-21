@@ -179,7 +179,42 @@ func (s *Server) shareHandler() http.Handler {
 			s.shareMu.Lock()
 			prepared := len(s.sharePayload) > 0
 			s.shareMu.Unlock()
-			sharePage.Execute(w, map[string]bool{"Prepared": prepared})
+			sharePage.Execute(w, map[string]bool{"Prepared": prepared, "Mac": strings.Contains(r.UserAgent(), "Macintosh")})
+		case "/download/macos.zip", "/download/ssh-config", "/download/macos-guide":
+			s.shareMu.Lock()
+			payload := append([]byte{}, s.sharePayload...)
+			s.shareMu.Unlock()
+			defer clear(payload)
+			state, err := s.Store.Snapshot()
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			pack, err := provision.MacExport(state, payload)
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			defer clear(pack.Archive)
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			switch r.URL.Path {
+			case "/download/macos.zip":
+				w.Header().Set("Content-Type", "application/zip")
+				w.Header().Set("Content-Disposition", `attachment; filename="sshdesk-macos.zip"`)
+				if r.Method != "HEAD" {
+					w.Write(pack.Archive)
+				}
+			case "/download/ssh-config":
+				w.Header().Set("Content-Disposition", `attachment; filename="ssh_config"`)
+				if r.Method != "HEAD" {
+					fmt.Fprint(w, pack.Config)
+				}
+			case "/download/macos-guide":
+				w.Header().Set("Content-Disposition", `attachment; filename="macos-setup.txt"`)
+				if r.Method != "HEAD" {
+					fmt.Fprint(w, pack.Instructions)
+				}
+			}
 		case "/download/sshdesk.exe":
 			s.shareMu.Lock()
 			payload := append([]byte{}, s.sharePayload...)
@@ -234,6 +269,14 @@ var sharePage = template.Must(template.New("share").Parse(strings.TrimSpace(`<!d
 <html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SSHDesk 팀 다운로드</title>
 <style>body{font:16px/1.7 'Segoe UI',sans-serif;background:#f5f7fa;color:#172b43;margin:0}main{max-width:700px;margin:10vh auto;padding:36px;background:white;border:1px solid #d6dee8;border-radius:16px}a{display:inline-block;background:#087c65;color:white;padding:14px 22px;margin:8px 8px 8px 0;border-radius:8px;text-decoration:none}small{color:#52647a}</style>
 <main><h1>SSHDesk 팀 다운로드</h1><p>SSH 접속과 터널 설정을 팀원들과 공유하세요.</p>
+{{if .Mac}}<p><strong>Mac에서 접속하셨습니다. 아래 macOS 설정 묶음을 사용하세요.</strong></p>{{end}}
+<h2>macOS SSH 설정</h2>
+<a href="/download/macos.zip" download>macOS 설정 묶음 다운로드 (.zip)</a>
+<a href="/download/ssh-config" download>SSH 설정 텍스트</a>
+<a href="/download/macos-guide" download>설치·접속 명령 안내</a>
+<p>ZIP을 풀고 해당 폴더에서 <code>bash install.command</code>를 실행하세요. 기존 SSH 설정을 보존하며, README.txt에 호스트 접속·터널 연결 명령이 들어 있습니다.</p>
+<p>{{if .Prepared}}선택한 개인 키가 ZIP에도 포함됩니다. 안전하게 보관하세요.{{else}}개인 키는 포함되지 않습니다. README.txt의 안내대로 본인의 키를 넣어 주세요.{{end}} Mac용 앱이 아닌 macOS 기본 SSH용 설정입니다.</p>
+<h2>Windows</h2>
 <a href="/download/sshdesk.exe" download>{{if .Prepared}}키·호스트 포함 실행파일 다운로드{{else}}Windows 실행파일 다운로드{{end}}</a>
 <a href="/download/configuration" download>팀 설정파일 다운로드</a>
 {{if .Prepared}}<p>처음 실행하면 포함된 키·호스트·터널·웹 바로가기가 내 PC에 자동 등록됩니다. 기존 설정은 덮어쓰지 않습니다.</p><p>이 실행파일에는 개인 키가 들어 있습니다. 팀 외부나 공개 저장소에 전달하지 마세요. 서버 지문/known_hosts는 별도로 확인해야 할 수 있습니다.</p>
