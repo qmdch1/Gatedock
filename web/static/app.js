@@ -581,6 +581,7 @@ document.addEventListener("click", async (e) => {
       location.hash = "#hosts";
     }
     await refresh();
+    if (action === "refresh") toast("대시보드를 새로고침했습니다.");
   } catch (err) {
     toast(err.message, true);
     await refresh(action !== "import" && action !== "import-apply").catch(
