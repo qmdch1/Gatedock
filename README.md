@@ -30,7 +30,7 @@ SSHDesk는 Windows에서 SSH 접속, 다중 Bastion 경유, 터널, 내부 웹 �
 
 ## 시작하기
 
-1. 빌드된 `sshdesk.exe`를 실행합니다.
+1. [Windows용 sshdesk.exe 다운로드](https://github.com/qmdch1/Gatedock/releases/latest/download/sshdesk.exe) 후 실행합니다.
 2. 자동으로 열리는 브라우저에서 관리 화면에 접속합니다. 직접 접속할 때는 <http://127.0.0.1:9876>을 사용합니다.
 3. 기존 `%USERPROFILE%\.ssh\config`가 있으면 새 호스트와 키 경로를 자동으로 등록합니다. 직접 등록하려면 **Keys → Add key**, **Hosts → Add host**를 사용합니다.
 4. 호스트의 **Terminal**로 접속하거나, **Services → Add service**에서 내부 웹 서비스를 등록합니다.
