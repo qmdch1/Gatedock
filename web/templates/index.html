@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{.Token}}">
+ <title>SSHDesk · Local connection workspace</title>
+ <link rel="stylesheet" href="/static/vendor/xterm.css"><link rel="stylesheet" href="/static/app.css">
+ <script defer src="/static/vendor/xterm.js"></script><script defer src="/static/vendor/addon-fit.js"></script><script defer src="/static/backup.js"></script><script defer src="/static/app.js"></script>
+</head>
+<body>
+ <aside class="sidebar">
+  <a href="#dashboard" class="brand"><span class="logo">›_</span><span>SSHDesk<small>CONNECTION WORKSPACE</small></span></a>
+  <div class="workspace"><span class="dot"></span> Personal workspace <span class="tag">LOCAL</span></div>
+  <div class="nav-label">WORKSPACE</div>
+  <nav aria-label="Main navigation">
+   <a href="#dashboard" data-page="dashboard"><span>◫</span>Dashboard</a>
+   <a href="#hosts" data-page="hosts"><span>▤</span>Hosts<span class="nav-count" id="host-count">0</span></a>
+   <a href="#tunnels" data-page="tunnels"><span>⇄</span>Tunnels<span class="nav-count" id="tunnel-count">0</span></a>
+   <a href="#terminal" data-page="terminal"><span>›_</span>Terminal</a>
+   <a href="#services" data-page="services"><span>▦</span>Services</a>
+   <a href="#keys" data-page="keys"><span>⚿</span>Keys</a>
+   <a href="#settings" data-page="settings"><span>⚙</span>Settings</a>
+  </nav>
+  <div class="sidebar-bottom"><span class="dot"></span> Local agent online<small>127.0.0.1 · Private by default</small><div class="version">SSHDesk <span>MVP 1.0</span></div></div>
+ </aside>
+ <div class="shell">
+  <header class="topbar"><div>Workspace <span>/</span> <strong id="breadcrumb">Dashboard</strong></div><div class="top-right"><span class="secure">◈ &nbsp;Loopback only</span><span class="avatar">SD</span></div></header>
+  <main>
+   <section class="page-header"><div><div class="eyebrow">YOUR INFRASTRUCTURE, CONNECTED</div><h1 id="page-title">Dashboard</h1><p id="page-subtitle">호스트부터 내부 서비스까지, 한 곳에서 연결하세요.</p></div><div class="actions" id="page-actions"></div></section>
+   <div id="content" aria-live="polite"></div>
+   <section id="terminal-panel" hidden>
+    <div class="prod-banner" id="prod-warning" hidden>PRODUCTION · 운영 서버에 연결 중입니다. 실행할 명령을 주의 깊게 확인하세요.</div>
+    <div class="panel terminal-top"><div><strong id="terminal-name">Terminal</strong> <span id="terminal-env"></span><small id="terminal-address"></small></div><div class="actions"><span id="terminal-status">Disconnected</span><span id="terminal-time"></span><button id="terminal-reconnect">Reconnect</button><button id="terminal-disconnect" class="danger">Disconnect</button></div></div>
+    <div id="terminal-screen"></div><div class="terminal-footer">xterm-256color <span>UTF-8 · Ctrl+C / Ctrl+D · Resize enabled</span></div>
+   </section>
+   <footer>SSHDesk keeps your connections local.<span>Keys stay on your machine.</span></footer>
+  </main>
+ </div>
+ <dialog id="editor"><form id="editor-form"><div class="dialog-heading"><div><div class="eyebrow">WORKSPACE CONFIGURATION</div><h2 id="editor-title"></h2></div><button type="button" id="editor-close" class="icon-button" aria-label="닫기">×</button></div><div id="editor-fields" class="form-grid"></div><p id="form-error" class="error" role="alert"></p><div class="dialog-footer"><button type="button" id="editor-cancel">Cancel</button><button type="submit" class="primary">Save changes</button></div></form></dialog>
+ <div id="toast" role="status" hidden></div>
+</body></html>

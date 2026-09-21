@@ -1,0 +1,12 @@
+CREATE TABLE hosts (id TEXT NOT NULL, data TEXT NOT NULL);
+CREATE INDEX hosts_id ON hosts(id);
+CREATE TABLE ssh_keys (id TEXT NOT NULL, data TEXT NOT NULL);
+CREATE INDEX ssh_keys_id ON ssh_keys(id);
+CREATE TABLE tunnels (id TEXT NOT NULL, data TEXT NOT NULL);
+CREATE INDEX tunnels_id ON tunnels(id);
+CREATE TABLE services (id TEXT NOT NULL, data TEXT NOT NULL);
+CREATE INDEX services_id ON services(id);
+CREATE TABLE connection_history (id TEXT NOT NULL, data TEXT NOT NULL);
+CREATE INDEX connection_history_id ON connection_history(id);
+CREATE TABLE settings (id TEXT NOT NULL, data TEXT NOT NULL);
+CREATE INDEX settings_id ON settings(id);
