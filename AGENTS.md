@@ -13,4 +13,5 @@
 - At startup, automatically import new aliases from the saved SSH config path (Windows default: %USERPROFILE%\.ssh\config). Preserve existing records and source files, skip invalid aliases/dependencies, report results in Settings, and never auto-connect. Support -no-auto-import for isolated runs.
 - Show a brief success toast after a user-triggered Dashboard Refresh completes. Background polling stays silent; failed requests show only the error notification.
 - Keep Configuration backup compact: selected filename field, file selection, export, preview and import configuration controls. Preserve local SSH config/known_hosts settings and require successful preview before applying.
+- Limit the backup filename field to 300px and place Preview / Import configuration on a separate row below the file selection and export controls.
 - Default to a high-contrast light management UI: white panels/navigation/forms, pale page background, dark readable text and clear environment/status colors. Only the interactive terminal canvas remains dark. This supersedes the original dark-mode default.

@@ -10,7 +10,8 @@ function setupBackupUI() {
       <div class="backup-controls"><input id="backup-name" type="text" readonly placeholder="설정파일을 선택하세요 (.json)">
       <input type="file" id="backup-file" accept=".json,application/json" hidden>
       <button type="button" id="backup-select">설정파일 선택</button>
-      <button type="button" id="backup-export">내보내기</button>
+      <button type="button" id="backup-export">내보내기</button></div>
+      <div class="backup-import-actions">
       <button type="button" id="backup-preview" disabled>Preview</button>
       <button type="button" id="backup-apply" class="primary" disabled>Import configuration</button></div></div>
     <div id="backup-summary" aria-live="polite"></div></div>`;
