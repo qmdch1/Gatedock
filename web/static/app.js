@@ -472,13 +472,16 @@ async function importPreview() {
     renderPage();
   }
   const path = $("#settings-form").elements.ssh_config.value;
+  const container = $("#import-preview");
   const preview = await api("import/preview", "POST", { path });
-  $("#import-preview").innerHTML = panel(
+  if (!container.isConnected || current !== "settings") return;
+  container.innerHTML = panel(
     "Import preview",
     "가져올 Host와 필요한 Jump Host를 선택하세요. 원본 파일은 변경하지 않습니다.",
     `<div class="panel-body">${preview.warnings.map((w) => `<p class="note">${esc(w)}</p>`).join("")}<div class="table-wrap"><table><thead><tr><th>Select / Alias</th><th>Address / User</th><th>Key / Jump</th><th>Notes</th></tr></thead><tbody>${preview.hosts.map((c) => `<tr><td><label class="check-label"><input type="checkbox" name="import-alias" value="${esc(c.alias)}" ${c.valid ? "" : "disabled"}>${esc(c.alias)}</label></td><td class="mono">${esc(c.address)}:${c.port}<span class="subline">${esc(c.username)}</span></td><td class="mono">${esc(c.identity_file)}<span class="subline">via ${esc(c.jumps.join(" → ") || "Direct")}</span></td><td class="wrap">${c.warnings.map(esc).join("<br>") || "Ready for import"}</td></tr>`).join("")}</tbody></table></div><p class="note">기존 별칭은 덮어쓰지 않습니다. 키 파일이 없거나 경유 Host가 누락되면 전체 가져오기를 취소합니다.</p>${button("Import selected hosts", "import-apply", "", "", "primary")}</div>`,
+    button("닫기", "import-close", "", "", "ghost"),
   );
-  $("#import-preview").dataset.path = path;
+  container.dataset.path = path;
 }
 async function connectTerminal(h) {
   if (
@@ -615,6 +618,15 @@ document.addEventListener("click", async (e) => {
     return;
   }
   if (busy) return;
+  if (action === "import-close") {
+    const preview = $("#import-preview");
+    if (preview) {
+      preview.replaceChildren();
+      delete preview.dataset.path;
+    }
+    $('#settings-form [data-action="import"]')?.focus();
+    return;
+  }
   busy = true;
   b.disabled = true;
   try {
