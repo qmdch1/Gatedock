@@ -15,6 +15,7 @@ import (
 	"sshdesk/internal/model"
 	"sshdesk/internal/platform"
 	"sshdesk/internal/sshclient"
+	"sshdesk/internal/sshconfig"
 	"sshdesk/internal/tunnel"
 	"sshdesk/internal/web"
 	"time"
@@ -34,6 +35,7 @@ func run() error {
 	data := flag.String("data-dir", dir, "application data directory")
 	port := flag.Int("port", 9876, "local HTTP port")
 	noBrowser := flag.Bool("no-browser", false, "disable automatic browser opening")
+	noImport := flag.Bool("no-auto-import", false, "disable startup SSH config import")
 	flag.Parse()
 	if !model.Port(*port) {
 		return errors.New("invalid HTTP port")
@@ -53,6 +55,15 @@ func run() error {
 		return e
 	}
 	defer store.Close()
+	startup := sshconfig.StartupResult{Disabled: *noImport}
+	if !*noImport {
+		state, err := store.Snapshot()
+		if err != nil {
+			return err
+		}
+		startup = sshconfig.AutoImport(store, state.Settings.SSHConfig)
+		log.Printf("SSH config import: added=%d existing=%d skipped=%d warnings=%d missing=%t (details: Settings)", startup.Imported, startup.Existing, len(startup.Skipped), len(startup.Warnings), startup.Missing)
+	}
 	ssh := &sshclient.Manager{Store: store}
 	tm := tunnel.New(ssh)
 	origin := "http://" + addr
@@ -61,6 +72,7 @@ func run() error {
 		return e
 	}
 	defer app.Close()
+	app.StartupImport = &startup
 	server := &http.Server{Handler: app.Handler(), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 32 * 1024}
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()

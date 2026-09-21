@@ -18,6 +18,7 @@ let state = {
     settings: {},
   },
   tunnelStatus = {},
+  startupImport = null,
   current = "dashboard",
   filter = "",
   envFilter = "",
@@ -83,6 +84,7 @@ async function refresh(render = true) {
   const data = await api("state");
   state = data.data;
   tunnelStatus = data.tunnel_status;
+  startupImport = data.startup_import;
   $("#host-count").textContent = state.hosts.length;
   $("#tunnel-count").textContent = Object.values(tunnelStatus).filter(
     (t) => t.state === "running",
@@ -257,6 +259,13 @@ function settings() {
   $("#content").innerHTML =
     `<div class="settings-grid">${panel("SSH settings", "원본 config와 known_hosts는 수정하지 않습니다.", `<form id="settings-form" class="panel-body"><label>Known hosts file<input name="known_hosts" required value="${esc(v.known_hosts)}"></label><label>SSH config file<input name="ssh_config" required value="${esc(v.ssh_config)}"></label><div class="actions"><button class="primary">Save settings</button>${button("↓ Import preview", "import")}</div></form>`)}${panel("Security defaults", "로컬에서 실행되는 개인용 연결 도구", `<div class="panel-body"><ul><li>HTTP 및 터널: 127.0.0.1 전용</li><li>SSH 서버 키: known_hosts 또는 검증된 SHA256 지문</li><li>키 원문 및 비밀번호 저장 안 함</li><li>CSRF / WebSocket Origin 검사</li><li>앱 종료 시 터미널과 터널 종료</li><li>시작 시 터널 자동 실행 안 함</li></ul><p class="note">PROD는 빨간색으로 표시됩니다. 가져온 Host의 기본 환경은 DEV이므로 실제 환경에 맞게 수정하세요.</p></div>`)}</div><div id="import-preview"></div>`;
   setupBackupUI();
+  if (startupImport) {
+    const r = startupImport;
+    const report = document.createElement("section");
+    report.className = "panel";
+    report.innerHTML = `<div class="panel-head"><div><h2>Startup SSH import</h2><p>시작 시 SSH config 자동 등록 결과</p></div></div><div class="panel-body"><p class="mono wrap">${esc(r.source || "")}</p><p>${r.disabled ? "자동 등록 비활성화 (-no-auto-import)" : r.missing ? "SSH config 파일이 없습니다. 필요하면 수동으로 Host를 등록하세요." : `추가 ${r.imported} · 기존 유지 ${r.existing} · 건너뜀 ${(r.skipped || []).length}`}</p><p class="note">기존 등록 내용과 원본 파일은 보존합니다. 새 Host의 기본 환경은 DEV입니다. 연결 전 환경과 서버 키를 확인하세요.</p>${(r.warnings || []).map(w => `<p class="note">${esc(w)}</p>`).join("")}${(r.skipped || []).map(s => `<p class="wrap"><strong>${esc(s.name)}</strong> · ${esc(s.reason)}</p>`).join("")}</div>`;
+    $("#content").prepend(report);
+  }
   $("#settings-form").onsubmit = async (e) => {
     e.preventDefault();
     try {

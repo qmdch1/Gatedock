@@ -91,7 +91,11 @@ func Parse(r io.Reader) (Preview, error) {
 	seen := map[string]bool{}
 	inMatch := false
 	for n := 1; scan.Scan(); n++ {
-		parts, e := tokens(scan.Text())
+		line := scan.Text()
+		if n == 1 {
+			line = strings.TrimPrefix(line, "\ufeff")
+		}
+		parts, e := tokens(line)
 		if e != nil {
 			return out, fmt.Errorf("line %d: %w", n, e)
 		}

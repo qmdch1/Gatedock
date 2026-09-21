@@ -7,7 +7,7 @@ Windows에서 개발자가 SSH, Bastion, 다중 Jump Host, Local Port Forwarding
 1. 빌드된 `sshdesk.exe`를 로컬 폴더에 둡니다. 별도 설치나 관리자 권한은 필요하지 않습니다.
 2. 실행하면 SQLite를 초기화하고 `127.0.0.1:9876`에서 서버를 시작합니다.
 3. `/health` 확인 후 기본 브라우저가 자동으로 열립니다.
-4. **Keys → Add key**, **Hosts → Add host** 순서로 등록하세요. 기존 SSH config는 **Settings → Import preview**로 가져올 수 있습니다.
+4. 시작할 때 `%USERPROFILE%\.ssh\config`의 새 Host와 키 경로를 자동 등록합니다. 기존 등록 내용은 보존합니다. 자동 등록 결과는 **Settings → Startup SSH import**에서 확인하세요. 파일이 없으면 **Keys → Add key**, **Hosts → Add host**로 등록할 수 있습니다.
 
 ```powershell
 .\sshdesk.exe
@@ -20,6 +20,8 @@ Windows에서 개발자가 SSH, Bastion, 다중 Jump Host, Local Port Forwarding
 ```powershell
 # 브라우저를 자동 실행하지 않기
 .\sshdesk.exe -no-browser
+# SSH config 자동 등록 없이 실행 (테스트/별도 워크스페이스)
+.\sshdesk.exe -no-auto-import
 # 다른 로컬 HTTP 포트 / 로컬 데이터 디렉터리
 .\sshdesk.exe -port 9877 -data-dir C:\Users\dev\AppData\Local\SSHDesk-alt
 ```
@@ -135,6 +137,10 @@ Name, Environment, Tunnel, URL, Description을 등록합니다. URL은 선택한
 **Open service → 필요하면 Tunnel Start → Remote TCP 연결 확인 → Windows 기본 브라우저 열기** 순서입니다. TCP 연결 성공은 HTTP 응답/DB 업무 상태 검사까지 의미하지 않습니다. 팝업 차단을 피하기 위해 Go 에이전트가 OS 기본 브라우저를 실행합니다.
 
 ### SSH Config Import
+
+**시작 시 자동 등록:** 저장된 SSH config 경로를 매번 읽습니다. 초기 경로는 Windows `%USERPROFILE%\.ssh\config`이며, Settings에서 경로를 변경하면 다음 실행부터 적용됩니다. 아직 없는 Host 별칭과 필요한 키 경로만 추가하고, 기존 Host/Key와 원본 파일은 덮어쓰거나 삭제하지 않습니다. 따라서 UI에서 삭제한 Host가 config에 남아 있으면 다음 시작 때 다시 등록됩니다. 자동 등록을 원치 않으면 `-no-auto-import`로 실행하세요.
+
+Jump로 서로 연결된 새 Host들은 한 번에 검증·저장합니다. 키 파일 오류, 미지원 지시문, 누락/순환 Jump 등은 해당 항목과 의존 항목을 건너뛰며 독립적인 정상 Host는 등록합니다. 파일이 없거나 파싱할 수 없어도 앱은 계속 실행됩니다. Settings에서 추가/기존/건너뜀 수와 이유를 확인할 수 있습니다. SSH 접속이나 터널 시작은 수행하지 않으며 개인 키 내용은 저장하지 않습니다. 새 Host의 환경은 DEV이므로 실제 PROD/STG 여부를 확인하세요. UTF-8 BOM이 있는 Windows config도 지원합니다.
 
 기본 `%USERPROFILE%\.ssh\config` 경로를 Settings에서 확인한 뒤 Import preview를 누릅니다. 가져올 Host 및 경유 Host를 선택하고 Import selected hosts를 누릅니다. 선택한 Host에 필요한 Key 경로도 함께 등록하며, 동일한 키 경로는 재사용합니다. 전체 선택을 한 트랜잭션으로 저장합니다. 중복 Host 이름, 누락된 Jump, 잘못된 키 파일은 전체 가져오기를 취소합니다.
 
