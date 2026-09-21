@@ -1,6 +1,8 @@
 # SSHDesk
 
-[![Windows용 SSHDesk 다운로드](https://img.shields.io/badge/Windows용_SSHDesk_다운로드-sshdesk.exe-087c65?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/qmdch1/Gatedock/releases/latest/download/sshdesk.exe)
+[![Windows용 SSHDesk 다운로드](docs/images/download-windows.svg)](https://github.com/qmdch1/Gatedock/releases/latest/download/sshdesk.exe)
+
+**[⬇ Windows용 sshdesk.exe 다운로드](https://github.com/qmdch1/Gatedock/releases/latest/download/sshdesk.exe)**
 
 ## 개요
 
