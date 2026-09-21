@@ -7,7 +7,7 @@
 - Go 1.27.1, Linux amd64 (WSL Ubuntu 26.04), Windows amd64
 - Linux native build: `dist/sshdesk`
 - Windows native executable: `sshdesk.exe`, 15,878,144 bytes (약 15.1 MiB)
-- Windows SHA256: `D152BFF20ED13D9F9891212B47854D1BFAFC23250B5F32078DDA6552747CFE86`
+- Windows SHA256: `AE53827FC5D4DDB5D8A224477CCF4A4CD8C12CE1E4F69B7CF241E3A485D7618B`
 - CGO disabled Windows build, SQLite / HTML / CSS / JavaScript / xterm.js 내장
 - Node.js는 개발 중 문법 확인/포맷에만 사용했습니다. 프로젝트 실행·빌드에 npm 설치나 프런트엔드 빌드는 필요하지 않습니다.
 
@@ -69,3 +69,5 @@ Windows의 실제 에이전트를 브라우저에서 열어 Dashboard를 시각�
 - Windows SQLite DB를 WSL UNC 공유 경로에 두면 `SQLITE_BUSY`가 발생했습니다. Windows 기본 데이터 위치는 로컬 `%LOCALAPPDATA%\SSHDesk`를 사용합니다. 네트워크 공유 DB는 지원하지 않습니다.
 - 사내 Bastion 방화벽/보안그룹, 실제 계정 권한, 조직의 서버 키 정책은 실서버에 접속하지 않아 검증하지 않았습니다.
 - 암호화된 키 입력, SSH agent, SFTP, Remote/SOCKS 포워딩 및 팀 권한 관리는 현재 범위 밖입니다. 자세한 Roadmap과 보안 모델은 README를 참고하세요.
+
+Configuration backup 간소화: JavaScript 문법 검사와 Windows 빌드 성공. 새 실행파일은 Windows 애플리케이션 제어 정책에 의해 실행이 차단되어 이번 변경의 브라우저 시각 검수는 수행하지 못했습니다.

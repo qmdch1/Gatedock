@@ -158,7 +158,7 @@ Jump로 서로 연결된 새 Host들은 한 번에 검증·저장합니다. 키 
 
 Settings의 **Configuration backup**에서 **Export settings**로 `*.sshdesk.json` 파일을 다운로드합니다. Host, Tunnel, Service, 키 파일 **경로**, 앱 설정만 포함하며 개인 키 원문, 비밀번호, 연결 기록, `.ssh/config`와 `known_hosts` 파일 내용은 포함하지 않습니다. 데이터가 외부 서버로 업로드되지 않습니다.
 
-**SSHDesk backup file → Import preview → Import configuration** 순서로 가져옵니다. 동일 ID·동일 내용은 건너뛰고 새 항목만 추가합니다. ID 내용 충돌, Host 이름 중복, 누락 참조, 순환 Jump 또는 유효하지 않은 설정이 있으면 전체 작업을 취소합니다. 기존 항목은 덮어쓰지 않습니다. SSH config/known_hosts 경로는 선택 항목을 체크해야 가져옵니다. 키 파일은 별도로 안전하게 옮기고 해당 PC의 경로를 수정하세요. 가져오기는 파일을 읽거나 SSH/터널을 자동 시작하지 않습니다. 최대 백업 크기는 UI에서 1 MiB입니다.
+**설정파일 선택 → Preview → Import configuration** 순서로 가져옵니다. 동일 ID·동일 내용은 건너뛰고 새 항목만 추가합니다. ID 내용 충돌, Host 이름 중복, 누락 참조, 순환 Jump 또는 유효하지 않은 설정이 있으면 전체 작업을 취소합니다. 기존 항목은 덮어쓰지 않습니다. 이 PC의 SSH config/known_hosts 경로 설정은 유지합니다. 키 파일은 별도로 안전하게 옮기고 해당 PC의 경로를 수정하세요. 가져오기는 파일을 읽거나 SSH/터널을 자동 시작하지 않습니다. 최대 백업 크기는 UI에서 1 MiB입니다.
 
 백업은 암호화되지 않은 JSON이며 내부 주소·사용자명·파일 경로를 포함합니다. 안전한 로컬 위치에 보관하세요. `*.sshdesk.json`, `exports/`, `backups/`, 로컬 DB, `.env`, 키 파일, 실행파일 및 테스트 데이터는 `.gitignore`로 제외합니다. 임의 이름으로 바꾼 민감 파일까지 Git이 자동 판별하지는 않으므로 공유 전 staged 파일을 확인해야 합니다.
 

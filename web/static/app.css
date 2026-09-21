@@ -12,6 +12,10 @@
 }
 .file-path-picker { display: flex; gap: 8px; align-items: baseline; }
 .file-path-picker input { min-width: 0; flex: 1; }
+.backup-file-row > label { margin-bottom: 8px; }
+.backup-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.backup-controls > input[type="text"] { flex: 1 1 240px; min-width: 0; }
+.backup-controls > input[hidden] { display: none; }
 * {
   box-sizing: border-box;
 }
