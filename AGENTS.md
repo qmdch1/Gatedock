@@ -7,6 +7,7 @@
 - Keep OS-specific browser launching and data directory selection in internal/platform. Use interfaces for SSH and tunnel tests.
 - Test against isolated local SSH servers; do not connect to real company hosts without an explicit request. Run go test ./..., go vet ./..., Linux race tests and Windows build/smoke checks for connection changes.
 - Preserve the seven MVP menus: Dashboard, Hosts, Tunnels, Terminal, Services, Keys, Settings. Do not add SFTP, logs or Docker management to this MVP.
+- Services can select any registered SSH host regardless of connection status and atomically create a tunnel using explicit destination/local ports, or reuse an existing tunnel. Saving must never connect; Open service starts the tunnel.
 - Database migrations use ordinary indexes; integrity and reference validation run under the store mutation lock, following the parent workspace schema policy.
 - Configuration and SSH files stay local. Export/import must never include key bytes, passwords, SSH file contents or history; exports contain sensitive connection metadata and must be excluded from Git. Import previews additions, preserves conflicting existing records, applies atomically, and never starts connections.
 - Before publishing to the project Git remote, inspect the staged file list and scan for credentials, private keys, local databases, exported configurations, internal endpoints and personal paths. Publish source and sanitized documentation only.

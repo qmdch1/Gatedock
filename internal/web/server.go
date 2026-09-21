@@ -198,9 +198,24 @@ func (s *Server) save(w http.ResponseWriter, r *http.Request) {
 			}
 			state.Tunnels, e = database.Replace(state.Tunnels, old, v, func(v model.Tunnel) string { return v.ID })
 		case "services":
-			var v model.Service
-			if e = decode(r, &v); e != nil {
+			var req struct {
+				model.Service
+				NewTunnel *model.Tunnel `json:"new_tunnel,omitempty"`
+			}
+			if e = decode(r, &req); e != nil {
 				return e
+			}
+			v := req.Service
+			if req.NewTunnel != nil {
+				if v.TunnelID != "" {
+					return errors.New("기존 터널 또는 새 호스트 중 하나를 선택하세요")
+				}
+				t := *req.NewTunnel
+				t.ID = database.ID()
+				t.Name = v.Name + " tunnel"
+				t.LocalHost = "127.0.0.1"
+				state.Tunnels = append(state.Tunnels, t)
+				v.TunnelID = t.ID
 			}
 			old := v.ID
 			if v.ID == "" {

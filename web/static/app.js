@@ -303,7 +303,7 @@ const schemas = {
   services: [
     ["name", "Name", "text"],
     ["environment", "Environment", "env"],
-    ["tunnel_id", "Tunnel", "tunnels"],
+    ["tunnel_id", "터널 또는 SSH 호스트", "tunnels"],
     ["url", "URL", "url", "http://127.0.0.1:18080"],
     ["description", "Description", "textarea"],
   ],
@@ -353,6 +353,10 @@ function editor(kind, id = "") {
               "",
               type === "hosts" ? "Direct connection (none)" : "Select…",
             ]);
+          if (kind === "services" && type === "tunnels") {
+            options = options.map(([v, t]) => [v, v ? `기존 터널 · ${t}` : "선택하세요"]);
+            options.push(...state.hosts.map((h) => [`host:${h.id}`, `새 터널 · ${h.name}`]));
+          }
           input = `<select name="${name}" ${type === "hosts" ? "" : "required"}>${options.map(([v, t]) => `<option value="${esc(v)}" ${String(value || (type === "env" ? "DEV" : "")) === String(v) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
         } else if (type === "textarea")
           input = `<textarea name="${name}" maxlength="2000">${esc(value)}</textarea>`;
@@ -370,6 +374,31 @@ function editor(kind, id = "") {
       : kind === "keys"
         ? '<p class="note full">로컬 파일 경로만 저장합니다. 암호화된 private key의 passphrase 입력은 향후 지원합니다.</p>'
         : "");
+  if (kind === "services") {
+    const extra = document.createElement("div");
+    extra.className = "full form-grid";
+    extra.hidden = true;
+    extra.innerHTML = `<label>Local port<input name="service_local_port" type="number" min="1" max="65535" value="18080"></label>
+      <label>대상 포트<input name="service_remote_port" type="number" min="1" max="65535" value="8080"></label>
+      <label class="full">대상 주소 (선택한 SSH 호스트 기준)<input name="service_remote_host" value="127.0.0.1"></label>`;
+    $("#editor-fields").append(extra);
+    const select = $('#editor-fields select[name="tunnel_id"]');
+    const url = $('#editor-fields input[name="url"]');
+    const local = extra.querySelector('[name="service_local_port"]');
+    const update = () => {
+      const create = select.value.startsWith("host:");
+      extra.hidden = !create;
+      extra.querySelectorAll("input").forEach((input) => { input.disabled = !create; input.required = create; });
+      if (create) url.value = `http://127.0.0.1:${local.value}`;
+      else {
+        const tunnel = state.tunnels.find((t) => t.id === select.value);
+        if (tunnel) url.value = `http://127.0.0.1:${tunnel.local_port}`;
+      }
+    };
+    extra.querySelectorAll("input").forEach((input) => { input.disabled = true; });
+    select.onchange = update;
+    local.oninput = () => { url.value = `http://127.0.0.1:${local.value}`; };
+  }
   if (kind === "keys") {
     const picker = $("#pick-key-file");
     const pathInput = $('#editor-fields input[name="path"]');
@@ -399,6 +428,18 @@ $("#editor-form").onsubmit = async (e) => {
   submit.disabled = true;
   const data = Object.fromEntries(new FormData(e.target));
   data.id = editing.id;
+  if (editing.kind === "services" && data.tunnel_id.startsWith("host:")) {
+    data.new_tunnel = {
+      host_id: data.tunnel_id.slice(5),
+      local_host: "127.0.0.1", local_port: Number(data.service_local_port),
+      remote_host: data.service_remote_host, remote_port: Number(data.service_remote_port),
+      auto_reconnect: true,
+    };
+    data.tunnel_id = "";
+    delete data.service_local_port;
+    delete data.service_remote_host;
+    delete data.service_remote_port;
+  }
   for (const [name, , type] of schemas[editing.kind]) {
     if (type === "number") data[name] = Number(data[name]);
     if (type === "checkbox") data[name] = e.target.elements[name].checked;

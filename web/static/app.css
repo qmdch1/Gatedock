@@ -17,6 +17,7 @@
 .backup-controls > input[type="text"] { flex: 0 1 300px; width: 300px; max-width: 100%; min-width: 0; }
 .backup-controls > input[hidden] { display: none; }
 .backup-import-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.form-grid[hidden] { display: none; }
 * {
   box-sizing: border-box;
 }
