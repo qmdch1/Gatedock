@@ -18,6 +18,7 @@
 .backup-controls > input[hidden] { display: none; }
 .backup-import-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .form-grid[hidden] { display: none; }
+.tunnel-link-row { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-bottom: 12px; }
 * {
   box-sizing: border-box;
 }

@@ -185,10 +185,14 @@ func (s *Server) save(w http.ResponseWriter, r *http.Request) {
 			state.Keys, e = database.Replace(state.Keys, old, v, func(v model.Key) string { return v.ID })
 			return e
 		case "tunnels":
-			var v model.Tunnel
-			if e = decode(r, &v); e != nil {
+			var req struct {
+				model.Tunnel
+				WebLinks *[]model.Service `json:"web_links,omitempty"`
+			}
+			if e = decode(r, &req); e != nil {
 				return e
 			}
+			v := req.Tunnel
 			if s.Tunnels.Active(v.ID) {
 				return errors.New("편집하기 전에 터널을 Stop하세요")
 			}
@@ -197,6 +201,9 @@ func (s *Server) save(w http.ResponseWriter, r *http.Request) {
 				v.ID = database.ID()
 			}
 			state.Tunnels, e = database.Replace(state.Tunnels, old, v, func(v model.Tunnel) string { return v.ID })
+			if e == nil && req.WebLinks != nil {
+				e = replaceTunnelLinks(state, v, *req.WebLinks)
+			}
 		case "services":
 			var req struct {
 				model.Service
@@ -261,6 +268,15 @@ func (s *Server) delete(w http.ResponseWriter, r *http.Request) {
 				return errors.New("삭제하기 전에 터널을 Stop하세요")
 			}
 			state.Tunnels, e = database.Delete(state.Tunnels, id, func(v model.Tunnel) string { return v.ID })
+			if e == nil {
+				links := []model.Service{}
+				for _, link := range state.Services {
+					if link.TunnelID != id {
+						links = append(links, link)
+					}
+				}
+				state.Services = links
+			}
 		case "services":
 			state.Services, e = database.Delete(state.Services, id, func(v model.Service) string { return v.ID })
 		default:

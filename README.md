@@ -18,7 +18,7 @@ SSHDesk는 Windows에서 SSH 접속, 다중 Bastion 경유, 터널, 내부 웹 �
 - **Bastion / 다중 경유** — Jump Host를 연결해 내부 서버에 접근
 - **웹 터미널** — 등록한 서버에 브라우저에서 SSH 접속
 - **터널 관리** — 로컬 포트 포워딩 시작·중지 및 연결 끊김 시 자동 재연결
-- **서비스 바로가기** — 필요한 터널을 연결하고 내부 웹 서비스를 열기
+- **웹 바로가기** — Tunnels에서 필요한 연결을 시작하고 내부 웹 서비스를 열기
 - **기존 SSH 설정 활용** — 실행 시 Windows SSH config의 새 호스트 자동 등록
 - **설정파일 공유** — 연결 구성을 내보내 다른 PC나 팀원에게 전달
 
@@ -28,16 +28,16 @@ SSHDesk는 Windows에서 SSH 접속, 다중 Bastion 경유, 터널, 내부 웹 �
 
 ![대시보드](docs/images/dashboard.jpg)
 
-서비스 등록 시 기존 터널을 선택하거나, 등록된 호스트로 새 터널을 함께 만들 수 있습니다.
+Tunnels에서 포트 연결과 웹 바로가기를 함께 관리합니다. 기존 Services 항목도 해당 터널의 바로가기로 표시됩니다.
 
-![서비스 등록](docs/images/add-service.jpg)
+![터널과 웹 바로가기](docs/images/tunnels.jpg)
 
 ## 시작하기
 
 1. [Windows용 sshdesk.exe 다운로드](https://github.com/qmdch1/Gatedock/releases/latest/download/sshdesk.exe) 후 실행합니다.
 2. 자동으로 열리는 브라우저에서 관리 화면에 접속합니다. 직접 접속할 때는 <http://127.0.0.1:9876>을 사용합니다.
 3. 기존 `%USERPROFILE%\.ssh\config`가 있으면 새 호스트와 키 경로를 자동으로 등록합니다. 직접 등록하려면 **Keys → Add key**, **Hosts → Add host**를 사용합니다.
-4. 호스트의 **Terminal**로 접속하거나, **Services → Add service**에서 내부 웹 서비스를 등록합니다.
+4. 호스트의 **Terminal**로 접속하거나, **Tunnels → Add tunnel**에서 포트 연결을 등록합니다. 웹 서비스라면 선택 항목인 웹 바로가기 이름과 URL도 입력하세요.
 
 개인 키는 파일 선택 또는 경로 입력으로 등록합니다. Bastion을 거치는 서버는 Host의 **Jump host**에 경유할 호스트를 지정하세요. 서버 확인에는 해당 PC의 `known_hosts` 또는 별도로 확인한 서버 지문을 사용합니다.
 

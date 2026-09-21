@@ -36,7 +36,6 @@ const pages = {
   hosts: ["Hosts", "Bastion과 내부 서버를 등록하고, 경유 연결을 관리하세요."],
   tunnels: ["Tunnels", "복잡한 포트 포워딩을 클릭 한 번으로 시작하세요."],
   terminal: ["Terminal", "브라우저에서 바로 연결하는 SSH 터미널."],
-  services: ["Services", "터널 연결부터 서비스 열기까지 한 번에."],
   keys: ["Keys", "키는 내 컴퓨터에. SSHDesk에는 파일 경로만 저장됩니다."],
   settings: ["Settings", "로컬 워크스페이스와 SSH 설정을 관리하세요."],
 };
@@ -93,7 +92,7 @@ async function refresh(render = true) {
 }
 function navigate() {
   const hash = location.hash.slice(1).split("/");
-  current = pages[hash[0]] ? hash[0] : "dashboard";
+  current = hash[0] === "services" ? "tunnels" : (pages[hash[0]] ? hash[0] : "dashboard");
   filter = "";
   envFilter = "";
   renderPage();
@@ -112,7 +111,7 @@ function renderPage() {
   $("#content").hidden = current === "terminal" && !!terminalHost;
   const actions = $("#page-actions");
   actions.innerHTML = "";
-  if (["hosts", "tunnels", "services", "keys"].includes(current)) {
+  if (["hosts", "tunnels", "keys"].includes(current)) {
     if (current === "hosts")
       actions.innerHTML = button("↓ Import SSH config", "import");
     actions.innerHTML += button(
@@ -154,7 +153,7 @@ function dashboard() {
     ["Registered hosts", state.hosts.length, "등록된 SSH 호스트", "▤"],
     ["Reachable hosts", reachable, "최근 SSH 연결 검사 기준", "◉"],
     ["Active tunnels", running, "로컬 포워딩 실행 중", "⇄"],
-    ["Service shortcuts", state.services.length, "클릭 한 번으로 열기", "▦"],
+    ["Registered tunnels", state.tunnels.length, "등록된 포트 연결", "⇄"],
   ];
   $("#content").innerHTML =
     `<div class="cards">${metrics.map((m, i) => `<div class="metric ${i === 2 ? "active" : ""}"><div class="metric-label">${m[0]}</div><span class="metric-icon">${m[3]}</span><div class="metric-number">${m[1].toString().padStart(2, "0")}</div><small>${m[2]}</small></div>`).join("")}</div>` +
@@ -180,7 +179,7 @@ function dashboard() {
     )}${panel("Connection health", "워크스페이스 상태", `<div class="panel-body"><div class="health-row">Local agent ${status("running")}</div><div class="health-row">SSH errors <strong class="${errors.length ? "error" : ""}">${state.history.filter((h) => h.status === "error").length}</strong></div><div class="health-row">Bind address <span class="mono">127.0.0.1</span></div>${errors.map((h) => `<p class="error wrap">${esc(h.host_name)} · ${esc(h.error)}</p>`).join("")}<div class="env-legend">${["LOCAL", "DEV", "STG", "PROD"].map(env).join("")}</div></div>`)}</div></div>`;
 }
 function toolbar() {
-  return `<div class="toolbar"><input id="search" aria-label="검색" placeholder="이름이나 주소로 검색…" value="${esc(filter)}">${current === "hosts" || current === "services" ? `<select id="env-filter" aria-label="환경 필터"><option value="">All environments</option>${["LOCAL", "DEV", "STG", "PROD"].map((e) => `<option ${envFilter === e ? "selected" : ""}>${e}</option>`).join("")}</select>` : ""}<span class="muted">${state[current].length} ${current}</span></div>`;
+  return `<div class="toolbar"><input id="search" aria-label="검색" placeholder="이름이나 주소로 검색…" value="${esc(filter)}">${current === "hosts" ? `<select id="env-filter" aria-label="환경 필터"><option value="">All environments</option>${["LOCAL", "DEV", "STG", "PROD"].map((e) => `<option ${envFilter === e ? "selected" : ""}>${e}</option>`).join("")}</select>` : ""}<span class="muted">${state[current].length} ${current}</span></div>`;
 }
 function filtered() {
   return state[current].filter(
@@ -195,12 +194,9 @@ function collection() {
   if (current === "hosts") body = hostTable(items);
   if (current === "tunnels") body = tunnelTable(items);
   if (current === "keys") body = keyTable(items);
-  if (current === "services") body = services(items);
   $("#content").innerHTML =
     toolbar() +
-    (current === "services"
-      ? body
-      : `<section class="panel">${body}</section>`);
+    `<section class="panel">${body}</section>`;
   $("#search").oninput = (e) => {
     const pos = e.target.selectionStart;
     filter = e.target.value;
@@ -235,7 +231,9 @@ function tunnelTable(items, compact = false) {
   return `<div class="table-wrap"><table><thead><tr><th>Name / Via</th><th>Local → Remote</th><th>Status</th><th>Actions</th></tr></thead><tbody>${items
     .map((t) => {
       const v = ts(t.id);
-      return `<tr><td class="name-cell">${esc(t.name)}<span class="subline">via ${esc(hostName(t.host_id))}${t.auto_reconnect ? " · Auto reconnect" : ""}</span></td><td class="mono">127.0.0.1:${t.local_port}<span class="subline">→ ${esc(t.remote_host)}:${t.remote_port}</span></td><td>${status(v.state)}${v.started_at ? `<span class="subline">${esc(new Date(v.started_at).toLocaleTimeString())} · ${v.connections || 0} streams</span>` : ""}${v.last_error ? `<span class="subline error wrap" title="${esc(v.last_error)}">${esc(v.last_error)}</span>` : ""}</td><td><div class="actions">${button(["running", "connecting", "reconnecting"].includes(v.state) ? "■ Stop" : "▷ Start", ["running", "connecting", "reconnecting"].includes(v.state) ? "stop" : "start", t.id, "tunnels", "small " + (v.state === "running" ? "" : "primary"))}${compact ? "" : button("Edit", "edit", t.id, "tunnels", "small ghost") + button("Delete", "delete", t.id, "tunnels", "small ghost danger")}</div></td></tr>`;
+      const links = state.services.filter((s) => s.tunnel_id === t.id);
+      const webButtons = links.map((s) => button("↗ " + esc(s.name), "open", s.id, "services", "small")).join("");
+      return `<tr><td class="name-cell">${esc(t.name)}<span class="subline">via ${esc(hostName(t.host_id))}${t.auto_reconnect ? " · Auto reconnect" : ""}</span></td><td class="mono">127.0.0.1:${t.local_port}<span class="subline">→ ${esc(t.remote_host)}:${t.remote_port}</span></td><td>${status(v.state)}${v.started_at ? `<span class="subline">${esc(new Date(v.started_at).toLocaleTimeString())} · ${v.connections || 0} streams</span>` : ""}${v.last_error ? `<span class="subline error wrap" title="${esc(v.last_error)}">${esc(v.last_error)}</span>` : ""}</td><td><div class="actions">${button(["running", "connecting", "reconnecting"].includes(v.state) ? "■ Stop" : "▷ Start", ["running", "connecting", "reconnecting"].includes(v.state) ? "stop" : "start", t.id, "tunnels", "small " + (v.state === "running" ? "" : "primary"))}${webButtons}${compact ? "" : button("Edit", "edit", t.id, "tunnels", "small ghost") + button("Delete", "delete", t.id, "tunnels", "small ghost danger")}</div></td></tr>`;
     })
     .join("")}</tbody></table></div>`;
 }
@@ -248,11 +246,6 @@ function keyTable(items) {
       button("+ Add key", "add", "", "keys"),
     );
   return `<div class="table-wrap"><table><thead><tr><th>Name</th><th>File path</th><th>Storage</th><th>Actions</th></tr></thead><tbody>${items.map((k) => `<tr><td class="name-cell">${esc(k.name)}</td><td class="mono">${esc(k.path)}</td><td><span class="status connected">Path only</span></td><td><div class="actions">${button("Validate", "check", k.id, "keys", "small")}${button("Edit", "edit", k.id, "keys", "small ghost")}${button("Delete", "delete", k.id, "keys", "small ghost danger")}</div></td></tr>`).join("")}</tbody></table></div>`;
-}
-function services(items) {
-  if (!items.length)
-    return `<section class="panel">${empty("▦", "서비스 바로가기를 추가하세요", "Grafana, Jenkins, 내부 API를 터널과 함께 등록하세요.", button("+ Add service", "add", "", "services"))}</section>`;
-  return `<div class="service-grid">${items.map((s) => `<article class="panel service-card"><div class="service-icon">▦</div><h2>${esc(s.name)} ${env(s.environment)}</h2><p>${esc(s.description || "Internal service")}</p><span class="mono">${esc(s.url)}</span><div class="muted">⇄ ${esc(tunnelName(s.tunnel_id))} &nbsp; ${status(ts(s.tunnel_id).state)}</div><div class="actions">${button("↗ Open service", "open", s.id, "services", "primary")}${button("Edit", "edit", s.id, "services", "small ghost")}${button("Delete", "delete", s.id, "services", "small danger ghost")}</div></article>`).join("")}</div>`;
 }
 function settings() {
   const v = state.settings;
@@ -295,16 +288,9 @@ const schemas = {
     ["host_id", "SSH host", "hosts-required"],
     ["local_host", "Local host", "text", "127.0.0.1"],
     ["local_port", "Local port", "number", 18080],
-    ["remote_host", "Remote host", "text"],
+    ["remote_host", "Remote host", "text", "127.0.0.1"],
     ["remote_port", "Remote port", "number", 8080],
     ["auto_reconnect", "Auto reconnect", "checkbox", true],
-    ["description", "Description", "textarea"],
-  ],
-  services: [
-    ["name", "Name", "text"],
-    ["environment", "Environment", "env"],
-    ["tunnel_id", "터널 또는 SSH 호스트", "tunnels"],
-    ["url", "URL", "url", "http://127.0.0.1:18080"],
     ["description", "Description", "textarea"],
   ],
   keys: [
@@ -353,10 +339,6 @@ function editor(kind, id = "") {
               "",
               type === "hosts" ? "Direct connection (none)" : "Select…",
             ]);
-          if (kind === "services" && type === "tunnels") {
-            options = options.map(([v, t]) => [v, v ? `기존 터널 · ${t}` : "선택하세요"]);
-            options.push(...state.hosts.map((h) => [`host:${h.id}`, `새 터널 · ${h.name}`]));
-          }
           input = `<select name="${name}" ${type === "hosts" ? "" : "required"}>${options.map(([v, t]) => `<option value="${esc(v)}" ${String(value || (type === "env" ? "DEV" : "")) === String(v) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
         } else if (type === "textarea")
           input = `<textarea name="${name}" maxlength="2000">${esc(value)}</textarea>`;
@@ -374,30 +356,25 @@ function editor(kind, id = "") {
       : kind === "keys"
         ? '<p class="note full">로컬 파일 경로만 저장합니다. 암호화된 private key의 passphrase 입력은 향후 지원합니다.</p>'
         : "");
-  if (kind === "services") {
-    const extra = document.createElement("div");
-    extra.className = "full form-grid";
-    extra.hidden = true;
-    extra.innerHTML = `<label>Local port<input name="service_local_port" type="number" min="1" max="65535" value="18080"></label>
-      <label>대상 포트<input name="service_remote_port" type="number" min="1" max="65535" value="8080"></label>
-      <label class="full">대상 주소 (선택한 SSH 호스트 기준)<input name="service_remote_host" value="127.0.0.1"></label>`;
-    $("#editor-fields").append(extra);
-    const select = $('#editor-fields select[name="tunnel_id"]');
-    const url = $('#editor-fields input[name="url"]');
-    const local = extra.querySelector('[name="service_local_port"]');
-    const update = () => {
-      const create = select.value.startsWith("host:");
-      extra.hidden = !create;
-      extra.querySelectorAll("input").forEach((input) => { input.disabled = !create; input.required = create; });
-      if (create) url.value = `http://127.0.0.1:${local.value}`;
-      else {
-        const tunnel = state.tunnels.find((t) => t.id === select.value);
-        if (tunnel) url.value = `http://127.0.0.1:${tunnel.local_port}`;
-      }
+  if (kind === "tunnels") {
+    const links = state.services.filter((s) => s.tunnel_id === id);
+    const block = document.createElement("div");
+    block.className = "full";
+    block.innerHTML = `<h3>웹 바로가기 (선택)</h3><p class="muted">웹 서비스는 URL을 등록하고, DB 연결은 비워두세요. 기존 URL을 비우면 바로가기를 삭제합니다.</p>`;
+    const addRow = (link = {}) => {
+      const row = document.createElement("div");
+      row.className = "tunnel-link-row";
+      row.dataset.id = link.id || "";
+      row.innerHTML = `<label>표시 이름<input data-link-name value="${esc(link.name || "")}" placeholder="예: Airflow" maxlength="160"></label><label>웹 URL<input data-link-url type="url" value="${esc(link.url || "")}" placeholder="http://127.0.0.1:18080" maxlength="1024"></label>`;
+      block.append(row);
     };
-    extra.querySelectorAll("input").forEach((input) => { input.disabled = true; });
-    select.onchange = update;
-    local.oninput = () => { url.value = `http://127.0.0.1:${local.value}`; };
+    links.forEach(addRow);
+    addRow();
+    const add = document.createElement("button");
+    add.type = "button"; add.textContent = "+ 웹 바로가기";
+    add.onclick = () => addRow();
+    block.append(add);
+    $("#editor-fields").append(block);
   }
   if (kind === "keys") {
     const picker = $("#pick-key-file");
@@ -428,17 +405,12 @@ $("#editor-form").onsubmit = async (e) => {
   submit.disabled = true;
   const data = Object.fromEntries(new FormData(e.target));
   data.id = editing.id;
-  if (editing.kind === "services" && data.tunnel_id.startsWith("host:")) {
-    data.new_tunnel = {
-      host_id: data.tunnel_id.slice(5),
-      local_host: "127.0.0.1", local_port: Number(data.service_local_port),
-      remote_host: data.service_remote_host, remote_port: Number(data.service_remote_port),
-      auto_reconnect: true,
-    };
-    data.tunnel_id = "";
-    delete data.service_local_port;
-    delete data.service_remote_host;
-    delete data.service_remote_port;
+  if (editing.kind === "tunnels") {
+    data.web_links = [...document.querySelectorAll(".tunnel-link-row")].map((row) => ({
+      id: row.dataset.id,
+      name: row.querySelector("[data-link-name]").value.trim() || data.name,
+      url: row.querySelector("[data-link-url]").value.trim(),
+    })).filter((link) => link.url);
   }
   for (const [name, , type] of schemas[editing.kind]) {
     if (type === "number") data[name] = Number(data[name]);
@@ -611,7 +583,7 @@ document.addEventListener("click", async (e) => {
     if (action === "delete") {
       if (
         !confirm(
-          "삭제하시겠습니까? 다른 항목에서 사용 중이면 삭제할 수 없습니다.",
+          kind === "tunnels" ? "터널과 연결된 웹 바로가기를 함께 삭제하시겠습니까?" : "삭제하시겠습니까? 다른 항목에서 사용 중이면 삭제할 수 없습니다.",
         )
       )
         return;
