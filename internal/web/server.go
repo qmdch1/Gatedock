@@ -25,22 +25,25 @@ import (
 )
 
 type Server struct {
-	shareMu       sync.Mutex
-	shareServer   *http.Server
-	PickKeyFile   func() (string, error)
-	pickerMu      sync.Mutex
-	StartupImport *sshconfig.StartupResult
-	OpenURL       func(string) error
-	Store         *database.Store
-	SSH           sshclient.Connector
-	Tunnels       *tunnel.Manager
-	Origin        string
-	token         string
-	templates     *template.Template
-	mu            sync.Mutex
-	terminals     map[string]context.CancelFunc
-	closed        bool
-	ops           sync.Mutex
+	shareMu        sync.Mutex
+	shareServer    *http.Server
+	sharePayload   []byte
+	shareSelection []string
+	shareConfig    *Backup
+	PickKeyFile    func() (string, error)
+	pickerMu       sync.Mutex
+	StartupImport  *sshconfig.StartupResult
+	OpenURL        func(string) error
+	Store          *database.Store
+	SSH            sshclient.Connector
+	Tunnels        *tunnel.Manager
+	Origin         string
+	token          string
+	templates      *template.Template
+	mu             sync.Mutex
+	terminals      map[string]context.CancelFunc
+	closed         bool
+	ops            sync.Mutex
 }
 
 func New(store *database.Store, ssh sshclient.Connector, tm *tunnel.Manager, origin string) (*Server, error) {

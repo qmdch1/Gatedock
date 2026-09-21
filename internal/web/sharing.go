@@ -1,12 +1,14 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net"
 	"net/http"
 	"os"
 	"runtime"
+	"sshdesk/internal/provision"
 	"strings"
 	"time"
 )
@@ -20,6 +22,10 @@ func (s *Server) stopSharing() {
 		s.shareServer.Close()
 		s.shareServer = nil
 	}
+	clear(s.sharePayload)
+	s.sharePayload = nil
+	s.shareSelection = nil
+	s.shareConfig = nil
 }
 
 func (s *Server) StartSharing() error {
@@ -65,6 +71,8 @@ func shareNetworks() []*net.IPNet {
 func (s *Server) sharingStatus(w http.ResponseWriter, r *http.Request) {
 	s.shareMu.Lock()
 	enabled := s.shareServer != nil
+	selected := append([]string{}, s.shareSelection...)
+	prepared := len(s.sharePayload) > 0
 	s.shareMu.Unlock()
 	urls := []string{}
 	for _, network := range shareNetworks() {
@@ -72,11 +80,44 @@ func (s *Server) sharingStatus(w http.ResponseWriter, r *http.Request) {
 			urls = append(urls, fmt.Sprintf("http://%s:%d", network.IP, SharePort))
 		}
 	}
-	reply(w, map[string]any{"enabled": enabled, "urls": urls, "port": SharePort})
+	reply(w, map[string]any{"enabled": enabled, "urls": urls, "primary_url": preferredShareURL(urls), "port": SharePort, "selected_keys": selected, "prepared": prepared})
 }
 
 func (s *Server) sharingAction(w http.ResponseWriter, r *http.Request) {
 	switch r.PathValue("action") {
+	case "prepare":
+		var req struct {
+			KeyIDs []string `json:"key_ids"`
+		}
+		if err := decode(r, &req); err != nil {
+			fail(w, err)
+			return
+		}
+		state, err := s.Store.Snapshot()
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		selected, err := provision.Select(state, req.KeyIDs)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		payload, err := provision.Create(state, req.KeyIDs)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		for i := range selected.Keys {
+			selected.Keys[i].Path = "~/SSHDesk-team-key"
+		}
+		backup := &Backup{Format: "sshdesk", Version: 1, ExportedAt: time.Now().UTC().Format(time.RFC3339), Hosts: selected.Hosts, Keys: selected.Keys, Tunnels: selected.Tunnels, Services: selected.Services}
+		s.shareMu.Lock()
+		clear(s.sharePayload)
+		s.sharePayload = payload
+		s.shareSelection = append([]string{}, req.KeyIDs...)
+		s.shareConfig = backup
+		s.shareMu.Unlock()
 	case "start":
 		if err := s.StartSharing(); err != nil {
 			fail(w, err)
@@ -135,9 +176,20 @@ func (s *Server) shareHandler() http.Handler {
 		switch r.URL.Path {
 		case "/":
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			sharePage.Execute(w, nil)
+			s.shareMu.Lock()
+			prepared := len(s.sharePayload) > 0
+			s.shareMu.Unlock()
+			sharePage.Execute(w, map[string]bool{"Prepared": prepared})
 		case "/download/sshdesk.exe":
+			s.shareMu.Lock()
+			payload := append([]byte{}, s.sharePayload...)
+			s.shareMu.Unlock()
+			defer clear(payload)
 			if runtime.GOOS != "windows" {
+				if len(payload) > 0 {
+					http.Error(w, "키 포함 실행파일 배포는 Windows에서 실행하세요", 503)
+					return
+				}
 				http.Redirect(w, r, "https://github.com/qmdch1/Gatedock/releases/latest/download/sshdesk.exe", 302)
 				return
 			}
@@ -148,9 +200,30 @@ func (s *Server) shareHandler() http.Handler {
 			}
 			w.Header().Set("Content-Disposition", `attachment; filename="sshdesk.exe"`)
 			w.Header().Set("Content-Type", "application/octet-stream")
-			http.ServeFile(w, r, exe)
+			file, err := os.Open(exe)
+			if err != nil {
+				http.Error(w, "Download unavailable", 500)
+				return
+			}
+			defer file.Close()
+			if _, err = provision.BaseSize(file); err != nil {
+				http.Error(w, "Invalid executable", 500)
+				return
+			}
+			if r.Method != "HEAD" {
+				provision.WriteExecutable(w, file, payload)
+			}
 		case "/download/configuration":
-			s.exportBackup(w, r)
+			s.shareMu.Lock()
+			config := s.shareConfig
+			s.shareMu.Unlock()
+			if config != nil {
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.Header().Set("Content-Disposition", `attachment; filename="sshdesk-team.sshdesk.json"`)
+				json.NewEncoder(w).Encode(config)
+			} else {
+				s.exportBackup(w, r)
+			}
 		default:
 			http.NotFound(w, r)
 		}
@@ -161,7 +234,27 @@ var sharePage = template.Must(template.New("share").Parse(strings.TrimSpace(`<!d
 <html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SSHDesk 팀 다운로드</title>
 <style>body{font:16px/1.7 'Segoe UI',sans-serif;background:#f5f7fa;color:#172b43;margin:0}main{max-width:700px;margin:10vh auto;padding:36px;background:white;border:1px solid #d6dee8;border-radius:16px}a{display:inline-block;background:#087c65;color:white;padding:14px 22px;margin:8px 8px 8px 0;border-radius:8px;text-decoration:none}small{color:#52647a}</style>
 <main><h1>SSHDesk 팀 다운로드</h1><p>SSH 접속과 터널 설정을 팀원들과 공유하세요.</p>
-<a href="/download/sshdesk.exe" download>Windows 실행파일 다운로드</a>
+<a href="/download/sshdesk.exe" download>{{if .Prepared}}키·호스트 포함 실행파일 다운로드{{else}}Windows 실행파일 다운로드{{end}}</a>
 <a href="/download/configuration" download>팀 설정파일 다운로드</a>
-<ol><li>실행파일을 다운로드하고 내 PC에서 실행합니다.</li><li>Settings → Configuration backup에서 팀 설정파일을 가져옵니다.</li><li>내 SSH 키 경로와 계정을 확인한 뒤 연결합니다.</li></ol>
-<small>설정에는 호스트·계정·키 경로가 포함됩니다. 개인 키 파일은 공유하지 않습니다. 이 페이지에서는 서버에 접속하거나 설정을 수정할 수 없습니다.</small></main></html>`)))
+{{if .Prepared}}<p>처음 실행하면 포함된 키·호스트·터널·웹 바로가기가 내 PC에 자동 등록됩니다. 기존 설정은 덮어쓰지 않습니다.</p><p>이 실행파일에는 개인 키가 들어 있습니다. 팀 외부나 공개 저장소에 전달하지 마세요. 서버 지문/known_hosts는 별도로 확인해야 할 수 있습니다.</p>
+{{else}}<ol><li>실행파일을 다운로드하고 내 PC에서 실행합니다.</li><li>Settings → Configuration backup에서 팀 설정파일을 가져옵니다.</li><li>내 SSH 키 경로와 계정을 확인한 뒤 연결합니다.</li></ol>{{end}}
+<small>JSON 설정파일에는 개인 키가 포함되지 않습니다. 이 페이지에서는 서버에 접속하거나 설정을 수정할 수 없습니다.</small></main></html>`)))
+
+// A UDP route lookup selects the outbound interface without sending packets.
+func preferredShareURL(urls []string) string {
+	conn, err := net.Dial("udp4", "192.0.2.1:9")
+	if err == nil {
+		address := conn.LocalAddr().(*net.UDPAddr).IP.String()
+		conn.Close()
+		candidate := fmt.Sprintf("http://%s:%d", address, SharePort)
+		for _, url := range urls {
+			if url == candidate {
+				return url
+			}
+		}
+	}
+	if len(urls) > 0 {
+		return urls[0]
+	}
+	return ""
+}

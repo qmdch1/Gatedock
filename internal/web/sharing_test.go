@@ -1,10 +1,37 @@
 package web
 
 import (
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+func TestPrepareSelectedInstaller(t *testing.T) {
+	app, ts, _ := setup(t)
+	code, body := request(t, app, ts, "POST", "/api/sharing/prepare", map[string]any{"key_ids": []string{"key"}})
+	if code != 200 {
+		t.Fatalf("prepare %d %s", code, body)
+	}
+	if len(app.sharePayload) == 0 || app.shareConfig == nil || len(app.shareConfig.Hosts) != 1 {
+		t.Fatal("missing scoped installer")
+	}
+	r := httptest.NewRequest("GET", "http://127.0.0.1:9877/download/configuration", nil)
+	r.RemoteAddr = "127.0.0.1:1111"
+	w := httptest.NewRecorder()
+	app.shareHandler().ServeHTTP(w, r)
+	var config Backup
+	if err := json.Unmarshal(w.Body.Bytes(), &config); err != nil {
+		t.Fatal(err)
+	}
+	if len(config.Keys) != 1 || strings.Contains(w.Body.String(), "PRIVATE KEY") || strings.Contains(w.Body.String(), "key_material") {
+		t.Fatal("JSON exposed private key")
+	}
+	app.stopSharing()
+	if len(app.sharePayload) != 0 || app.shareConfig != nil || len(app.shareSelection) != 0 {
+		t.Fatal("stop retained package")
+	}
+}
 
 func TestShareDownloadBoundary(t *testing.T) {
 	app, _, _ := setup(t)

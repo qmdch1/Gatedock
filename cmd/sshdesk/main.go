@@ -14,6 +14,7 @@ import (
 	"sshdesk/internal/database"
 	"sshdesk/internal/model"
 	"sshdesk/internal/platform"
+	"sshdesk/internal/provision"
 	"sshdesk/internal/sshclient"
 	"sshdesk/internal/sshconfig"
 	"sshdesk/internal/tunnel"
@@ -56,6 +57,19 @@ func run() error {
 		return e
 	}
 	defer store.Close()
+	exe, e := os.Executable()
+	if e != nil {
+		return e
+	}
+	payload, e := provision.ReadExecutable(exe)
+	if e != nil {
+		return e
+	}
+	_, e = provision.Install(store, *data, payload)
+	clear(payload)
+	if e != nil {
+		return e
+	}
 	startup := sshconfig.StartupResult{Disabled: *noImport}
 	if !*noImport {
 		state, err := store.Snapshot()

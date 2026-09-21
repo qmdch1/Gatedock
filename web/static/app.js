@@ -278,11 +278,33 @@ async function sharing() {
   try {
     const info = await api("sharing");
     if (current !== "sharing") return;
-    content.innerHTML = panel("팀 다운로드 페이지", info.enabled ? "공유 중" : "공유 꺼짐", `<div class="panel-body"><p>공유를 켜면 같은 로컬망에서 실행파일과 현재 설정파일을 다운로드할 수 있습니다. 설정에는 내부 주소·계정명·키 경로가 포함됩니다.</p><p>개인 키, 관리 화면, 터미널은 공유하지 않습니다. 앱을 종료하면 공유도 종료됩니다.</p>${info.urls.map((url) => `<p><a href="${esc(url)}" target="_blank" rel="noreferrer">${esc(url)}</a></p>`).join("") || '<p>사용 가능한 로컬망 주소가 없습니다.</p>'}<button type="button" id="share-toggle" class="primary">${info.enabled ? "공유 중지" : "공유 시작"}</button><p class="muted">Windows 방화벽에서 TCP 9877 포트를 로컬 서브넷에 허용해야 합니다. 같은 PC의 관리 화면은 127.0.0.1:9876에서 사용합니다.</p></div>`);
-    $("#share-toggle").onclick = async (event) => {
-      event.currentTarget.disabled = true;
+    content.innerHTML = panel("팀 다운로드 페이지", info.enabled ? "공유 중" : "공유 꺼짐", `<div class="panel-body">
+      <h3>팀 접속 주소</h3>${info.primary_url ? `<p><a href="${esc(info.primary_url)}" target="_blank" rel="noreferrer">${esc(info.primary_url)}</a></p>` : '<p>사용 가능한 로컬망 주소가 없습니다.</p>'}
+      ${info.urls.length > 1 ? `<details><summary>다른 네트워크 주소</summary><p class="muted">가상 어댑터나 VPN 주소일 수 있습니다. 팀원과 연결된 네트워크 주소를 사용하세요.</p>${info.urls.filter(url => url !== info.primary_url).map(url => `<p>${esc(url)}</p>`).join("")}</details>` : ""}
+      <h3>포함할 SSH 키</h3>${state.keys.map(k => `<label class="check-label"><input type="checkbox" name="share-key" value="${esc(k.id)}" ${info.selected_keys.includes(k.id) ? "checked" : ""}>${esc(k.name)}</label>`).join("") || '<p>Keys에서 먼저 키를 등록하세요.</p>'}
+      <div id="share-host-preview"></div>
+      <p class="note">키 포함 배포본에는 선택한 개인 키 원문이 들어갑니다. 공유를 켜면 같은 로컬 서브넷에서 다운로드할 수 있습니다. HTTP 공유이므로 신뢰하는 로컬망에서만 사용하고 공개 저장소에는 올리지 마세요.</p>
+      <div class="actions"><button type="button" id="share-prepare" ${state.keys.length ? "" : "disabled"}>선택한 키로 배포본 만들기</button><button type="button" id="share-toggle" class="primary">${info.enabled ? "공유 중지" : "공유 시작"}</button></div>
+      <p>${info.prepared ? "키 포함 배포본 준비됨 · 받는 PC에서 처음 실행하면 자동 등록됩니다." : "현재 기본 실행파일과 전체 JSON 설정만 공유합니다. 개인 키는 포함되지 않습니다."}</p>
+      <p class="muted">설정 변경 후에는 배포본을 다시 만드세요. 공유 중지나 앱 종료 시 준비한 배포본은 폐기됩니다. 관리 화면과 터미널은 공유되지 않습니다. Windows 방화벽은 TCP 9877을 로컬 서브넷에 허용해야 합니다.</p></div>`);
+    const selected = () => [...content.querySelectorAll('[name="share-key"]:checked')].map(input => input.value);
+    const preview = () => {
+      const ids = selected();
+      const hosts = state.hosts.filter(h => ids.includes(h.key_id));
+      $("#share-host-preview").innerHTML = `<p>포함할 호스트 ${hosts.length}개: ${hosts.map(h => esc(h.name)).join(", ") || "없음"}</p>`;
+      $("#share-prepare").disabled = !ids.length;
+    };
+    content.querySelectorAll('[name="share-key"]').forEach(input => input.onchange = preview);
+    preview();
+    $("#share-prepare").onclick = async event => {
+      const button = event.currentTarget; button.disabled = true;
+      try { await api("sharing/prepare", "POST", {key_ids:selected()}); await sharing(); toast("키와 호스트를 포함한 배포본을 준비했습니다"); }
+      catch (err) { toast(err.message,true); button.disabled=false; }
+    };
+    $("#share-toggle").onclick = async event => {
+      const button = event.currentTarget; button.disabled = true;
       try { await api("sharing/" + (info.enabled ? "stop" : "start"), "POST"); await sharing(); }
-      catch (err) { toast(err.message, true); event.currentTarget.disabled = false; }
+      catch (err) { toast(err.message, true); button.disabled = false; }
     };
   } catch (err) { if (current === "sharing") content.textContent = err.message; }
 }
