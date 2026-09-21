@@ -360,6 +360,8 @@ function editor(kind, id = "") {
           input = `<input type="checkbox" name="${name}" ${value ? "checked" : ""}>`;
         else
           input = `<input name="${name}" type="${type}" value="${esc(value)}" ${name === "local_host" ? "readonly" : ""} ${type === "number" ? 'min="1" max="65535"' : ""} ${name === "fingerprint" ? 'placeholder="SHA256:…"' : "required"} maxlength="1024">`;
+        if (kind === "keys" && name === "path")
+          input = `<span class="file-path-picker">${input}<button type="button" id="pick-key-file">파일 선택…</button></span>`;
         return `<label class="${["description", "fingerprint", "path", "url"].includes(name) ? "full" : ""} ${type === "checkbox" ? "check-label" : ""}">${label}${input}</label>`;
       })
       .join("") +
@@ -368,6 +370,25 @@ function editor(kind, id = "") {
       : kind === "keys"
         ? '<p class="note full">로컬 파일 경로만 저장합니다. 암호화된 private key의 passphrase 입력은 향후 지원합니다.</p>'
         : "");
+  if (kind === "keys") {
+    const picker = $("#pick-key-file");
+    const pathInput = $('#editor-fields input[name="path"]');
+    picker.onclick = async () => {
+      picker.disabled = true;
+      picker.textContent = "선택 중…";
+      $("#form-error").textContent = "";
+      try {
+        const result = await api("keys/pick-file", "POST");
+        if (!result.cancelled && pathInput.isConnected && $("#editor").open)
+          pathInput.value = result.path;
+      } catch (err) {
+        if (pathInput.isConnected) $("#form-error").textContent = err.message;
+      } finally {
+        picker.disabled = false;
+        picker.textContent = "파일 선택…";
+      }
+    };
+  }
   $("#editor").showModal();
 }
 $("#editor-close").onclick = $("#editor-cancel").onclick = () =>

@@ -10,6 +10,8 @@
   --red: #bf2942;
   --blue: #245ac1;
 }
+.file-path-picker { display: flex; gap: 8px; align-items: baseline; }
+.file-path-picker input { min-width: 0; flex: 1; }
 * {
   box-sizing: border-box;
 }

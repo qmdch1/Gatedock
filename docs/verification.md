@@ -6,8 +6,8 @@
 
 - Go 1.27.1, Linux amd64 (WSL Ubuntu 26.04), Windows amd64
 - Linux native build: `dist/sshdesk`
-- Windows native executable: `sshdesk.exe`, 15,870,464 bytes (약 15.1 MiB)
-- Windows SHA256: `BF78AB0F9C981AA0B05DBB2AEE36EB27EEB119372F10C8EA7675F87F87B1C09B`
+- Windows native executable: `sshdesk.exe`, 15,878,144 bytes (약 15.1 MiB)
+- Windows SHA256: `D152BFF20ED13D9F9891212B47854D1BFAFC23250B5F32078DDA6552747CFE86`
 - CGO disabled Windows build, SQLite / HTML / CSS / JavaScript / xterm.js 내장
 - Node.js는 개발 중 문법 확인/포맷에만 사용했습니다. 프로젝트 실행·빌드에 npm 설치나 프런트엔드 빌드는 필요하지 않습니다.
 
@@ -55,6 +55,8 @@ Windows에서 통과한 패키지는 `database`, `model`, `sshconfig`, `sshclien
 - **Linux**: `dist/sshdesk -no-browser -port 9877` 실행 및 동일 health 응답 확인. SIGINT로 테스트 프로세스 종료.
 
 ## 브라우저 UI 검수
+
+키 파일 선택 버튼 추가: Linux의 web/platform 테스트와 vet, JavaScript 문법 검사, Windows 빌드를 통과했습니다. 주입한 선택 함수로 한글·공백 경로, 취소, 오류, 중복 창 차단, CSRF 차단을 검증했습니다. Windows 재시작 후 브라우저에서 버튼 배치를 확인했습니다. 네이티브 파일 창에서 실제 파일을 선택하는 수동 검증은 수행하지 않았습니다.
 
 밝은 관리 화면 테마 변경 후 Windows 실행파일을 다시 빌드하고 재시작했습니다. 브라우저에서 대시보드와 Host 추가 창의 흰색 표면, 진한 글자, 입력창 테두리를 시각적으로 확인했습니다. 터미널 출력 영역의 어두운 배경은 유지했습니다.
 

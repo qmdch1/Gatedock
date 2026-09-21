@@ -25,6 +25,8 @@ import (
 )
 
 type Server struct {
+	PickKeyFile   func() (string, error)
+	pickerMu      sync.Mutex
 	StartupImport *sshconfig.StartupResult
 	OpenURL       func(string) error
 	Store         *database.Store
@@ -79,6 +81,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/tunnels/{id}/{action}", s.tunnelAction)
 	mux.HandleFunc("POST /api/hosts/{id}/check", s.checkHost)
 	mux.HandleFunc("POST /api/keys/{id}/check", s.checkKey)
+	mux.HandleFunc("POST /api/keys/pick-file", s.pickKeyFile)
 	mux.HandleFunc("POST /api/services/{id}/open", s.openService)
 	mux.HandleFunc("POST /api/import/preview", s.preview)
 	mux.HandleFunc("POST /api/import/apply", s.importConfig)
