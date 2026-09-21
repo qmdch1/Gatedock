@@ -1,5 +1,7 @@
 # SSHDesk
 
+[![Windows용 SSHDesk 다운로드](https://img.shields.io/badge/Windows용_SSHDesk_다운로드-sshdesk.exe-087c65?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/qmdch1/Gatedock/releases/latest/download/sshdesk.exe)
+
 ## 개요
 
 내부망에서 개발하다 보면 서버 접속은 SSH 클라이언트에서, Bastion 경유와 포트 포워딩은 별도 명령어로, 내부 서비스 접속은 브라우저에서 처리하게 됩니다. 여러 도구를 오가며 접속 정보를 반복해서 설정하는 불편함을 줄이기 위해 SSHDesk를 만들었습니다.
