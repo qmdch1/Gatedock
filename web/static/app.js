@@ -566,10 +566,12 @@ async function connectTerminal(h) {
   socket = ws;
   ws.binaryType = "arraybuffer";
   term.writeln("\x1b[90mConnecting securely…\x1b[0m");
-  ws.onopen = () =>
+  ws.onopen = () => {
+    if (generation !== terminalGeneration) return;
     ws.send(
       JSON.stringify({ type: "auth", token, cols: term.cols, rows: term.rows }),
     );
+  };
   ws.onmessage = (e) => {
     if (generation !== terminalGeneration) return;
     if (e.data instanceof ArrayBuffer) {
@@ -624,7 +626,14 @@ function disconnectTerminal() {
 }
 $("#terminal-disconnect").onclick = () => {
   disconnectTerminal();
-  term?.writeln("\r\nDisconnected.");
+  terminalHost = null;
+  terminalAt = null;
+  term?.dispose();
+  term = null;
+  fit = null;
+  $("#terminal-screen").replaceChildren();
+  history.replaceState(null, "", "#terminal");
+  navigate();
   toast("터미널 연결을 종료했습니다");
 };
 $("#terminal-reconnect").onclick = () =>
