@@ -26,6 +26,9 @@ func (s *Server) stopSharing() {
 	s.sharePayload = nil
 	s.shareSelection = nil
 	s.shareConfig = nil
+	s.shareFeed = ""
+	s.sharePublic = nil
+	s.sharePeers = nil
 }
 
 func (s *Server) StartSharing() error {
@@ -73,6 +76,12 @@ func (s *Server) sharingStatus(w http.ResponseWriter, r *http.Request) {
 	enabled := s.shareServer != nil
 	selected := append([]string{}, s.shareSelection...)
 	prepared := len(s.sharePayload) > 0
+	peers := []map[string]string{}
+	for ip, last := range s.sharePeers {
+		if time.Since(last) < 5*time.Minute {
+			peers = append(peers, map[string]string{"ip": ip, "last_seen": last.UTC().Format(time.RFC3339)})
+		}
+	}
 	s.shareMu.Unlock()
 	urls := []string{}
 	for _, network := range shareNetworks() {
@@ -80,7 +89,7 @@ func (s *Server) sharingStatus(w http.ResponseWriter, r *http.Request) {
 			urls = append(urls, fmt.Sprintf("http://%s:%d", network.IP, SharePort))
 		}
 	}
-	reply(w, map[string]any{"enabled": enabled, "urls": urls, "primary_url": preferredShareURL(urls), "port": SharePort, "selected_keys": selected, "prepared": prepared})
+	reply(w, map[string]any{"enabled": enabled, "urls": urls, "primary_url": preferredShareURL(urls), "port": SharePort, "selected_keys": selected, "prepared": prepared, "peers": peers})
 }
 
 func (s *Server) sharingAction(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +117,12 @@ func (s *Server) sharingAction(w http.ResponseWriter, r *http.Request) {
 			fail(w, err)
 			return
 		}
+		feed, public, err := provision.PrepareFeed(s.Store, req.KeyIDs)
+		if err != nil {
+			clear(payload)
+			fail(w, err)
+			return
+		}
 		for i := range selected.Keys {
 			selected.Keys[i].Path = "~/SSHDesk-team-key"
 		}
@@ -117,6 +132,8 @@ func (s *Server) sharingAction(w http.ResponseWriter, r *http.Request) {
 		s.sharePayload = payload
 		s.shareSelection = append([]string{}, req.KeyIDs...)
 		s.shareConfig = backup
+		s.shareFeed = feed
+		s.sharePublic = public
 		s.shareMu.Unlock()
 	case "start":
 		if err := s.StartSharing(); err != nil {
@@ -173,6 +190,10 @@ func (s *Server) shareHandler() http.Handler {
 			http.Error(w, "Read only", 405)
 			return
 		}
+		if strings.HasPrefix(r.URL.Path, "/sync/") {
+			s.serveFeed(w, r)
+			return
+		}
 		switch r.URL.Path {
 		case "/":
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -181,9 +202,11 @@ func (s *Server) shareHandler() http.Handler {
 			s.shareMu.Unlock()
 			sharePage.Execute(w, map[string]bool{"Prepared": prepared, "Mac": strings.Contains(r.UserAgent(), "Macintosh")})
 		case "/download/macos.zip", "/download/ssh-config", "/download/macos-guide":
-			s.shareMu.Lock()
-			payload := append([]byte{}, s.sharePayload...)
-			s.shareMu.Unlock()
+			payload, payloadErr := s.downloadPayload(r)
+			if payloadErr != nil {
+				fail(w, payloadErr)
+				return
+			}
 			defer clear(payload)
 			state, err := s.Store.Snapshot()
 			if err != nil {
@@ -216,9 +239,11 @@ func (s *Server) shareHandler() http.Handler {
 				}
 			}
 		case "/download/sshdesk.exe":
-			s.shareMu.Lock()
-			payload := append([]byte{}, s.sharePayload...)
-			s.shareMu.Unlock()
+			payload, payloadErr := s.downloadPayload(r)
+			if payloadErr != nil {
+				fail(w, payloadErr)
+				return
+			}
 			defer clear(payload)
 			if runtime.GOOS != "windows" {
 				if len(payload) > 0 {
@@ -253,6 +278,26 @@ func (s *Server) shareHandler() http.Handler {
 			config := s.shareConfig
 			s.shareMu.Unlock()
 			if config != nil {
+				payload, err := s.downloadPayload(r)
+				if err != nil {
+					fail(w, err)
+					return
+				}
+				defer clear(payload)
+				var bundle provision.Bundle
+				if err = json.Unmarshal(payload, &bundle); err != nil {
+					fail(w, err)
+					return
+				}
+				defer func() {
+					for _, key := range bundle.Keys {
+						clear(key)
+					}
+				}()
+				config = &Backup{Format: "sshdesk", Version: 1, ExportedAt: time.Now().UTC().Format(time.RFC3339), Hosts: bundle.State.Hosts, Keys: bundle.State.Keys, Tunnels: bundle.State.Tunnels, Services: bundle.State.Services}
+				for i := range config.Keys {
+					config.Keys[i].Path = "~/SSHDesk-team-key"
+				}
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.Header().Set("Content-Disposition", `attachment; filename="sshdesk-team.sshdesk.json"`)
 				json.NewEncoder(w).Encode(config)
@@ -279,7 +324,7 @@ var sharePage = template.Must(template.New("share").Parse(strings.TrimSpace(`<!d
 <h2>Windows</h2>
 <a href="/download/sshdesk.exe" download>{{if .Prepared}}키·호스트 포함 실행파일 다운로드{{else}}Windows 실행파일 다운로드{{end}}</a>
 <a href="/download/configuration" download>팀 설정파일 다운로드</a>
-{{if .Prepared}}<p>처음 실행하면 포함된 키·호스트·터널·웹 바로가기가 내 PC에 자동 등록됩니다. 기존 설정은 덮어쓰지 않습니다.</p><p>이 실행파일에는 개인 키가 들어 있습니다. 팀 외부나 공개 저장소에 전달하지 마세요. 서버 지문/known_hosts는 별도로 확인해야 할 수 있습니다.</p>
+{{if .Prepared}}<p>처음 실행하면 키·호스트·터널·웹 바로가기가 자동 등록됩니다. 이후 원본 PC가 공유 중이면 앱이 30초마다 추가·수정을 반영합니다. 원본에서 제거된 항목은 삭제하지 않고 보관 표시로 남깁니다. 개인이 만든 항목은 유지합니다.</p><p>이 실행파일에는 개인 키가 들어 있습니다. 팀 외부나 공개 저장소에 전달하지 마세요. 서버 지문/known_hosts는 별도로 확인해야 할 수 있습니다.</p>
 {{else}}<ol><li>실행파일을 다운로드하고 내 PC에서 실행합니다.</li><li>Settings → Configuration backup에서 팀 설정파일을 가져옵니다.</li><li>내 SSH 키 경로와 계정을 확인한 뒤 연결합니다.</li></ol>{{end}}
 <small>JSON 설정파일에는 개인 키가 포함되지 않습니다. 이 페이지에서는 서버에 접속하거나 설정을 수정할 수 없습니다.</small></main></html>`)))
 

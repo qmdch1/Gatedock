@@ -3,6 +3,7 @@ package provision
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -24,6 +25,7 @@ const magic = "SSHDesk-Team-Bundle-v1"
 const MaxPayload = 16 << 20
 
 type Bundle struct {
+	Source  *model.TeamSource `json:"source,omitempty"`
 	Version int               `json:"version"`
 	State   model.State       `json:"state"`
 	Keys    map[string][]byte `json:"key_material"`
@@ -224,6 +226,18 @@ func Install(store *database.Store, dir string, payload []byte) (bool, error) {
 	if b.Version != 1 || len(b.Keys) != len(b.State.Keys) {
 		return false, errors.New("팀 배포본 형식 오류")
 	}
+	if b.Source != nil {
+		if err := ValidateSource(*b.Source); err != nil {
+			return false, err
+		}
+		// A master opening its own installer must not subscribe to itself.
+		secret, err := store.LocalValue("team-signing-key", nil)
+		self := err == nil && len(secret) == ed25519.PrivateKeySize && bytes.Equal(ed25519.PrivateKey(secret).Public().(ed25519.PublicKey), b.Source.PublicKey)
+		clear(secret)
+		if self {
+			return false, nil
+		}
+	}
 	if err := database.Validate(b.State); err != nil {
 		return false, err
 	}
@@ -249,6 +263,22 @@ func Install(store *database.Store, dir string, payload []byte) (bool, error) {
 		}
 		if _, err := ssh.ParsePrivateKey(raw); err != nil {
 			return false, errors.New("배포본 키 형식 오류")
+		}
+		// A fresh download may contain the same key at a new package path.
+		if b.Source != nil {
+			local, err := store.Snapshot()
+			if err != nil {
+				return false, err
+			}
+			if existing, err := local.Key(k.ID); err == nil {
+				old, err := key.Read(existing.Path)
+				equal := err == nil && bytes.Equal(old, raw)
+				clear(old)
+				if equal {
+					b.State.Keys[i].Path = existing.Path
+					continue
+				}
+			}
 		}
 		// Never use a sender-provided filename or ID as a filesystem path.
 		path := filepath.Join(root, fmt.Sprintf("key-%d", i))
@@ -281,6 +311,26 @@ func Install(store *database.Store, dir string, payload []byte) (bool, error) {
 	}
 	err := store.Update(func(s *model.State) error {
 		var err error
+		if b.Source != nil {
+			for i, sub := range s.Team {
+				if !bytes.Equal(sub.Source.PublicKey, b.Source.PublicKey) {
+					continue
+				}
+				// Re-downloading from this master also permits explicitly selected new keys.
+				for _, k := range b.State.Keys {
+					if _, e := s.Key(k.ID); e == nil && sub.Items["keys/"+k.ID] == "" {
+						return errors.New("개인 키 ID 충돌")
+					}
+					s.Keys, err = syncRecords(s.Keys, []model.Key{k}, "keys", sub.Items, func(v model.Key) string { return v.ID })
+					if err != nil {
+						return err
+					}
+					s.Team[i].Items["keys/"+k.ID] = "current"
+				}
+				s.Team[i].Source = *b.Source
+				return ApplyFeed(s, i, b.State)
+			}
+		}
 		if s.Keys, err = merge(s.Keys, b.State.Keys, func(v model.Key) string { return v.ID }); err != nil {
 			return err
 		}
@@ -292,6 +342,9 @@ func Install(store *database.Store, dir string, payload []byte) (bool, error) {
 		}
 		if s.Services, err = merge(s.Services, b.State.Services, func(v model.Service) string { return v.ID }); err != nil {
 			return err
+		}
+		if b.Source != nil {
+			return registerSource(s, *b.Source, b.State)
 		}
 		return nil
 	})

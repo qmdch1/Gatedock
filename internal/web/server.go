@@ -25,6 +25,12 @@ import (
 )
 
 type Server struct {
+	shareFeed      string
+	sharePublic    []byte
+	sharePeers     map[string]time.Time
+	syncRun        sync.Mutex
+	syncCancel     context.CancelFunc
+	syncDone       chan struct{}
 	shareMu        sync.Mutex
 	shareServer    *http.Server
 	sharePayload   []byte
@@ -55,9 +61,14 @@ func New(store *database.Store, ssh sshclient.Connector, tm *tunnel.Manager, ori
 	if e != nil {
 		return nil, e
 	}
-	return &Server{OpenURL: platform.OpenBrowser, Store: store, SSH: ssh, Tunnels: tm, Origin: origin, token: hex.EncodeToString(b), templates: t, terminals: map[string]context.CancelFunc{}}, nil
+	ctx, cancel := context.WithCancel(context.Background())
+	server := &Server{OpenURL: platform.OpenBrowser, Store: store, SSH: ssh, Tunnels: tm, Origin: origin, token: hex.EncodeToString(b), templates: t, terminals: map[string]context.CancelFunc{}, syncCancel: cancel, syncDone: make(chan struct{})}
+	go server.runTeamSync(ctx)
+	return server, nil
 }
 func (s *Server) Close() {
+	s.syncCancel()
+	<-s.syncDone
 	s.stopSharing()
 	s.mu.Lock()
 	s.closed = true
@@ -80,7 +91,14 @@ func (s *Server) Handler() http.Handler {
 			fail(w, e)
 			return
 		}
-		reply(w, map[string]any{"data": state, "tunnel_status": s.Tunnels.Statuses(), "startup_import": s.StartupImport})
+		statuses := s.Tunnels.Statuses()
+		for _, t := range state.Tunnels {
+			if v, ok := statuses[t.ID]; ok {
+				v.ConfigChanged = s.Tunnels.ConfigChanged(t)
+				statuses[t.ID] = v
+			}
+		}
+		reply(w, map[string]any{"data": state, "tunnel_status": statuses, "startup_import": s.StartupImport, "team_sync": teamStatus(state)})
 	})
 	mux.HandleFunc("POST /api/{kind}", s.save)
 	mux.HandleFunc("DELETE /api/{kind}/{id}", s.delete)
@@ -90,6 +108,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/keys/pick-file", s.pickKeyFile)
 	mux.HandleFunc("GET /api/sharing", s.sharingStatus)
 	mux.HandleFunc("POST /api/sharing/{action}", s.sharingAction)
+	mux.HandleFunc("POST /api/team-sync/{action}", s.teamAction)
 	mux.HandleFunc("POST /api/services/{id}/open", s.openService)
 	mux.HandleFunc("POST /api/import/preview", s.preview)
 	mux.HandleFunc("POST /api/import/apply", s.importConfig)
@@ -367,6 +386,9 @@ func (s *Server) openService(w http.ResponseWriter, r *http.Request) {
 	for _, v := range state.Services {
 		if v.ID == r.PathValue("id") {
 			t, e := state.Tunnel(v.TunnelID)
+			if e == nil && s.Tunnels.ConfigChanged(t) {
+				e = errors.New("저장된 터널 설정이 변경되었습니다. 기존 연결은 유지 중입니다. Stop 후 Start하여 새 설정을 적용하세요")
+			}
 			if e == nil {
 				e = model.ValidateService(v, t)
 			}

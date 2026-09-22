@@ -14,10 +14,11 @@ import (
 )
 
 type Status struct {
-	State       string `json:"state"`
-	LastError   string `json:"last_error"`
-	StartedAt   string `json:"started_at"`
-	Connections int    `json:"connections"`
+	ConfigChanged bool   `json:"config_changed,omitempty"`
+	State         string `json:"state"`
+	LastError     string `json:"last_error"`
+	StartedAt     string `json:"started_at"`
+	Connections   int    `json:"connections"`
 }
 type entry struct {
 	config   model.Tunnel
@@ -54,6 +55,13 @@ func (m *Manager) Active(id string) bool {
 	defer m.mu.Unlock()
 	e := m.entries[id]
 	return e != nil && (e.status.State == "running" || e.status.State == "connecting" || e.status.State == "reconnecting")
+}
+
+func (m *Manager) ConfigChanged(t model.Tunnel) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e := m.entries[t.ID]
+	return e != nil && (e.status.State == "running" || e.status.State == "connecting" || e.status.State == "reconnecting") && e.config != t
 }
 func (m *Manager) Start(ctx context.Context, t model.Tunnel) error {
 	if e := model.ValidateTunnel(t); e != nil {

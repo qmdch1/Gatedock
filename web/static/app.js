@@ -19,6 +19,7 @@ let state = {
   },
   tunnelStatus = {},
   startupImport = null,
+  teamSync = [],
   current = "dashboard",
   filter = "",
   envFilter = "",
@@ -85,6 +86,13 @@ async function refresh(render = true) {
   state = data.data;
   tunnelStatus = data.tunnel_status;
   startupImport = data.startup_import;
+  teamSync = data.team_sync || [];
+  if (current === "sharing") {
+    renderTeamSync();
+    const info = await api("sharing");
+    const peers = $("#share-peer-list");
+    if (peers) peers.innerHTML = '<p class="muted">최근 5분간 원본 설정을 확인한 IP입니다. 같은 IP의 여러 앱은 하나로 표시됩니다.</p>' + ((info.peers || []).map(p => `<p>${esc(p.ip)} · ${esc(new Date(p.last_seen).toLocaleTimeString())}</p>`).join("") || "<p>아직 동기화 요청이 없습니다.</p>");
+  }
   $("#host-count").textContent = state.hosts.length;
   $("#tunnel-count").textContent = Object.values(tunnelStatus).filter(
     (t) => t.state === "running",
@@ -212,6 +220,16 @@ function collection() {
       collection();
     };
 }
+function sharedStatus(kind, id) {
+  return teamSync.map(s => s.items?.[kind + "/" + id]).find(Boolean) || "";
+}
+function sharedClass(kind, id) {
+  return sharedStatus(kind, id) === "missing" ? "source-missing" : "";
+}
+function sharedBadge(kind, id) {
+  const value = sharedStatus(kind, id);
+  return value ? `<span class="sync-badge ${value === "missing" ? "missing" : ""}" title="${value === "missing" ? "원본의 공유 범위에서 제거됐지만 내 PC에는 보관된 항목입니다." : "원본의 추가·수정 사항이 자동 적용됩니다. 실행 중 연결은 다음 연결부터 적용됩니다."}">${value === "missing" ? "원본에서 제거됨 · 보관" : "Master 동기화"}</span>` : "";
+}
 function hostTable(items, compact = false) {
   if (!items.length)
     return empty(
@@ -220,7 +238,7 @@ function hostTable(items, compact = false) {
       "SSH Key를 먼저 등록하고 Host를 추가하세요.",
       button("+ Add host", "add", "", "hosts"),
     );
-  return `<div class="table-wrap"><table><thead><tr><th>Name / Environment</th><th>Address</th>${compact ? "" : "<th>Jump host</th>"}<th>Status</th><th>Actions</th></tr></thead><tbody>${items.map((h) => `<tr><td><span class="name-cell">${esc(h.name)}</span><span class="subline">${env(h.environment)} &nbsp; ${esc(h.type)}</span></td><td class="mono">${esc(h.address)}:${h.port}<span class="subline">${esc(h.username)}</span></td>${compact ? "" : `<td>${esc(hostName(h.jump_id))}</td>`}<td>${status(hostStatus(h.id))}</td><td><div class="actions">${button("›_ Terminal", "terminal", h.id, "", "small")}${compact ? "" : button("Check", "check", h.id, "hosts", "small ghost") + button("Edit", "edit", h.id, "hosts", "small ghost") + button("Delete", "delete", h.id, "hosts", "small ghost danger")}</div></td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Name / Environment</th><th>Address</th>${compact ? "" : "<th>Jump host</th>"}<th>Status</th><th>Actions</th></tr></thead><tbody>${items.map((h) => `<tr class="${sharedClass("hosts", h.id)}"><td><span class="name-cell">${esc(h.name)}</span>${sharedBadge("hosts", h.id)}<span class="subline">${env(h.environment)} &nbsp; ${esc(h.type)}</span></td><td class="mono">${esc(h.address)}:${h.port}<span class="subline">${esc(h.username)}</span></td>${compact ? "" : `<td>${esc(hostName(h.jump_id))}</td>`}<td>${status(hostStatus(h.id))}</td><td><div class="actions">${button("›_ Terminal", "terminal", h.id, "", "small")}${compact ? "" : button("Check", "check", h.id, "hosts", "small ghost") + button("Edit", "edit", h.id, "hosts", "small ghost") + button("Delete", "delete", h.id, "hosts", "small ghost danger")}</div></td></tr>`).join("")}</tbody></table></div>`;
 }
 function tunnelTable(items, compact = false) {
   if (!items.length)
@@ -234,8 +252,8 @@ function tunnelTable(items, compact = false) {
     .map((t) => {
       const v = ts(t.id);
       const links = state.services.filter((s) => s.tunnel_id === t.id);
-      const webButtons = links.map((s) => button("↗ " + esc(s.name), "open", s.id, "services", "small")).join("");
-      return `<tr><td class="name-cell">${esc(t.name)}<span class="subline">via ${esc(hostName(t.host_id))}${t.auto_reconnect ? " · Auto reconnect" : ""}</span></td><td class="mono">127.0.0.1:${t.local_port}<span class="subline">→ ${esc(t.remote_host)}:${t.remote_port}</span></td><td>${status(v.state)}${v.started_at ? `<span class="subline">${esc(new Date(v.started_at).toLocaleTimeString())} · ${v.connections || 0} streams</span>` : ""}${v.last_error ? `<span class="subline error wrap" title="${esc(v.last_error)}">${esc(v.last_error)}</span>` : ""}</td><td><div class="actions">${button(["running", "connecting", "reconnecting"].includes(v.state) ? "■ Stop" : "▷ Start", ["running", "connecting", "reconnecting"].includes(v.state) ? "stop" : "start", t.id, "tunnels", "small " + (v.state === "running" ? "" : "primary"))}${webButtons}${compact ? "" : button("Edit", "edit", t.id, "tunnels", "small ghost") + button("Delete", "delete", t.id, "tunnels", "small ghost danger")}</div></td></tr>`;
+      const webButtons = links.map((s) => button("↗ " + esc(s.name) + (sharedStatus("services", s.id) === "missing" ? " · 원본에서 제거됨" : ""), "open", s.id, "services", "small " + sharedClass("services", s.id))).join("");
+      return `<tr class="${sharedClass("tunnels", t.id)}"><td class="name-cell">${esc(t.name)}${sharedBadge("tunnels", t.id)}<span class="subline">via ${esc(hostName(t.host_id))}${t.auto_reconnect ? " · Auto reconnect" : ""}</span></td><td class="mono">127.0.0.1:${t.local_port}<span class="subline">→ ${esc(t.remote_host)}:${t.remote_port}</span></td><td>${status(v.state)}${v.config_changed ? '<span class="sync-badge missing">설정 변경됨 · Stop 후 Start</span>' : ""}${v.started_at ? `<span class="subline">${esc(new Date(v.started_at).toLocaleTimeString())} · ${v.connections || 0} streams</span>` : ""}${v.last_error ? `<span class="subline error wrap" title="${esc(v.last_error)}">${esc(v.last_error)}</span>` : ""}</td><td><div class="actions">${button(["running", "connecting", "reconnecting"].includes(v.state) ? "■ Stop" : "▷ Start", ["running", "connecting", "reconnecting"].includes(v.state) ? "stop" : "start", t.id, "tunnels", "small " + (v.state === "running" ? "" : "primary"))}${webButtons}${compact ? "" : button("Edit", "edit", t.id, "tunnels", "small ghost") + button("Delete", "delete", t.id, "tunnels", "small ghost danger")}</div></td></tr>`;
     })
     .join("")}</tbody></table></div>`;
 }
@@ -247,7 +265,7 @@ function keyTable(items) {
       "PEM, RSA, ED25519 개인 키 파일의 경로를 등록하세요.",
       button("+ Add key", "add", "", "keys"),
     );
-  return `<div class="table-wrap"><table><thead><tr><th>Name</th><th>File path</th><th>Storage</th><th>Actions</th></tr></thead><tbody>${items.map((k) => `<tr><td class="name-cell">${esc(k.name)}</td><td class="mono">${esc(k.path)}</td><td><span class="status connected">Path only</span></td><td><div class="actions">${button("Validate", "check", k.id, "keys", "small")}${button("Edit", "edit", k.id, "keys", "small ghost")}${button("Delete", "delete", k.id, "keys", "small ghost danger")}</div></td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Name</th><th>File path</th><th>Storage</th><th>Actions</th></tr></thead><tbody>${items.map((k) => `<tr class="${sharedClass("keys", k.id)}"><td class="name-cell">${esc(k.name)}${sharedBadge("keys", k.id)}</td><td class="mono">${esc(k.path)}</td><td><span class="status connected">Path only</span></td><td><div class="actions">${button("Validate", "check", k.id, "keys", "small")}${button("Edit", "edit", k.id, "keys", "small ghost")}${button("Delete", "delete", k.id, "keys", "small ghost danger")}</div></td></tr>`).join("")}</tbody></table></div>`;
 }
 function settings() {
   const v = state.settings;
@@ -281,12 +299,15 @@ async function sharing() {
     content.innerHTML = panel("팀 다운로드 페이지", info.enabled ? "공유 중" : "공유 꺼짐", `<div class="panel-body">
       <h3>팀 접속 주소</h3>${info.primary_url ? `<p><a href="${esc(info.primary_url)}" target="_blank" rel="noreferrer">${esc(info.primary_url)}</a></p>` : '<p>사용 가능한 로컬망 주소가 없습니다.</p>'}
       ${info.urls.length > 1 ? `<details><summary>다른 네트워크 주소</summary><p class="muted">가상 어댑터나 VPN 주소일 수 있습니다. 팀원과 연결된 네트워크 주소를 사용하세요.</p>${info.urls.filter(url => url !== info.primary_url).map(url => `<p>${esc(url)}</p>`).join("")}</details>` : ""}
+      <h3>최근 동기화 PC</h3><div id="share-peer-list"><p class="muted">최근 5분간 원본 설정을 확인한 IP입니다. 같은 IP의 여러 앱은 하나로 표시됩니다.</p>${(info.peers || []).map(p => `<p>${esc(p.ip)} · ${esc(new Date(p.last_seen).toLocaleTimeString())}</p>`).join("") || "<p>아직 동기화 요청이 없습니다.</p>"}</div>
       <h3>포함할 SSH 키</h3>${state.keys.map(k => `<label class="check-label"><input type="checkbox" name="share-key" value="${esc(k.id)}" ${info.selected_keys.includes(k.id) ? "checked" : ""}>${esc(k.name)}</label>`).join("") || '<p>Keys에서 먼저 키를 등록하세요.</p>'}
       <div id="share-host-preview"></div>
       <p class="note">키 포함 배포본에는 선택한 개인 키 원문이 들어갑니다. 공유를 켜면 같은 로컬 서브넷에서 다운로드할 수 있습니다. HTTP 공유이므로 신뢰하는 로컬망에서만 사용하고 공개 저장소에는 올리지 마세요.</p>
       <div class="actions"><button type="button" id="share-prepare" ${state.keys.length ? "" : "disabled"}>선택한 키로 배포본 만들기</button><button type="button" id="share-toggle" class="primary">${info.enabled ? "공유 중지" : "공유 시작"}</button></div>
       <p>${info.prepared ? "키 포함 배포본 준비됨 · 받는 PC에서 처음 실행하면 자동 등록됩니다." : "현재 기본 실행파일과 전체 JSON 설정만 공유합니다. 개인 키는 포함되지 않습니다."}</p>
-      <p class="muted">설정 변경 후에는 배포본을 다시 만드세요. 공유 중지나 앱 종료 시 준비한 배포본은 폐기됩니다. 관리 화면과 터미널은 공유되지 않습니다. Windows 방화벽은 TCP 9877을 로컬 서브넷에 허용해야 합니다.</p></div>`);
+      <p class="muted">새 배포본으로 등록한 팀원에게 선택한 키 범위의 호스트·터널 추가와 수정이 30초마다 자동 반영됩니다. 원본에서 제거된 항목은 팀원 PC에 보관 표시로 남습니다. 개인 키 변경·추가는 새 배포본을 받아야 합니다. 공유 중지나 앱 종료 시 키 포함 배포본은 폐기되지만 구독 정보는 유지됩니다. 앱을 다시 켜고 공유를 시작하면 기존 구독이 재개됩니다. 관리 화면과 터미널은 공유되지 않습니다. Windows 방화벽은 TCP 9877을 로컬 서브넷에 허용해야 합니다.</p></div>`);
+    content.insertAdjacentHTML("beforeend", '<div id="team-sync-panel"></div>');
+    renderTeamSync();
     const selected = () => [...content.querySelectorAll('[name="share-key"]:checked')].map(input => input.value);
     const preview = () => {
       const ids = selected();
@@ -307,6 +328,22 @@ async function sharing() {
       catch (err) { toast(err.message, true); button.disabled = false; }
     };
   } catch (err) { if (current === "sharing") content.textContent = err.message; }
+}
+function renderTeamSync() {
+  const root = $("#team-sync-panel");
+  if (!root || root.contains(document.activeElement)) return;
+  root.innerHTML = panel("내 PC의 원본 구독", "새 팀 배포본을 실행하면 자동 등록됩니다.", `<div class="panel-body"><p>원본이 공유 중이고 이 앱이 실행 중일 때 30초마다 갱신합니다. 개인이 만든 항목·키 파일 경로는 유지하고, 공유 항목은 원본 기준으로 수정됩니다. 실행 중 터널·터미널은 끊지 않으며 다음 연결부터 적용됩니다.</p>${teamSync.length ? teamSync.map(s => `<div class="sync-source"><strong>${esc(s.url)}</strong><p>${s.paused ? "자동 갱신 일시 중지" : s.error ? esc(s.error) : s.last_sync ? "최근 갱신: " + esc(new Date(s.last_sync).toLocaleString()) : "첫 동기화 대기 중"}</p><p class="muted">원본에서 제거됨: ${Object.values(s.items || {}).filter(v => v === "missing").length}개 · 삭제하지 않고 보관합니다.</p><div class="actions"><button data-sync="${s.paused ? "resume" : "pause"}" data-source="${esc(s.id)}">${s.paused ? "자동 갱신 재개" : "자동 갱신 일시 중지"}</button><button data-sync="refresh" data-source="${esc(s.id)}">지금 확인</button></div><form class="sync-address" data-source="${esc(s.id)}"><label>원본 IP가 바뀐 경우<input name="url" aria-label="원본 주소" value="${esc(s.url)}" required></label><button>원본 주소 저장</button></form></div>`).join("") : '<p>구독 중인 원본이 없습니다. 기존 배포본 사용자는 새 버전의 팀 배포본을 한 번 받아 실행하세요. 일반 JSON 가져오기와 macOS SSH 텍스트 묶음은 자동 구독하지 않습니다.</p>'}</div>`);
+  root.querySelectorAll("[data-sync]").forEach(button => button.onclick = async () => {
+    button.disabled = true;
+    try { await api("team-sync/" + button.dataset.sync, "POST", {id:button.dataset.source}); await refresh(false); button.blur(); renderTeamSync(); }
+    catch (err) { toast(err.message, true); }
+    finally { button.disabled = false; }
+  });
+  root.querySelectorAll(".sync-address").forEach(form => form.onsubmit = async e => {
+    e.preventDefault();
+    try { await api("team-sync/address", "POST", {id:form.dataset.source,url:form.elements.url.value}); toast("원본 주소를 저장했습니다. 원본 서명은 계속 검증합니다."); }
+    catch (err) { toast(err.message, true); }
+  });
 }
 const schemas = {
   hosts: [
@@ -680,7 +717,7 @@ window.addEventListener("hashchange", navigate);
 window.addEventListener("beforeunload", () => disconnectTerminal());
 setInterval(() => {
   if (!busy && !$("#editor").open) {
-    const draw = ["dashboard", "tunnels"].includes(current) && !filter;
+    const draw = ["dashboard", "hosts", "tunnels", "keys"].includes(current) && !filter && document.activeElement?.id !== "search" || (current === "terminal" && !terminalHost);
     refresh(draw).catch(() => {});
   }
 }, 5000);

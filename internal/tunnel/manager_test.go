@@ -87,6 +87,27 @@ func freePort(t *testing.T) int {
 	l.Close()
 	return p
 }
+
+func TestChangedConfigurationPreservesRunningTunnel(t *testing.T) {
+	connector := &fakeConnector{}
+	manager := New(connector)
+	defer manager.Close()
+	config := tunnelFixture(t)
+	if err := manager.Start(context.Background(), config); err != nil {
+		t.Fatal(err)
+	}
+	if manager.ConfigChanged(config) {
+		t.Fatal("unchanged marked pending")
+	}
+	config.LocalPort = freePort(t)
+	if !manager.ConfigChanged(config) || !manager.Active(config.ID) || connector.current().closed.Load() {
+		t.Fatal("did not retain live tunnel")
+	}
+	manager.Stop(config.ID)
+	if manager.ConfigChanged(config) {
+		t.Fatal("stopped tunnel marked pending")
+	}
+}
 func tunnelFixture(t *testing.T) model.Tunnel {
 	return model.Tunnel{ID: "t", Name: "API", LocalHost: "127.0.0.1", LocalPort: freePort(t), RemoteHost: "127.0.0.1", RemotePort: 80, HostID: "h", AutoReconnect: true}
 }

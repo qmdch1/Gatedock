@@ -52,7 +52,7 @@ func Open(path string, defaults model.Settings) (*Store, error) {
 		db.Close()
 		return nil, e
 	}
-	if version > 1 {
+	if version > 2 {
 		db.Close()
 		return nil, errors.New("database version is newer than this application")
 	}
@@ -74,6 +74,26 @@ func Open(path string, defaults model.Settings) (*Store, error) {
 		if e = tx.Commit(); e != nil {
 			db.Close()
 			return nil, e
+		}
+	}
+	if version < 2 {
+		tx, err := db.Begin()
+		if err != nil {
+			db.Close()
+			return nil, err
+		}
+		raw, _ := migrations.ReadFile("migrations/002_team.sql")
+		if _, err = tx.Exec(string(raw)); err == nil {
+			_, err = tx.Exec("PRAGMA user_version=2")
+		}
+		if err != nil {
+			tx.Rollback()
+			db.Close()
+			return nil, err
+		}
+		if err = tx.Commit(); err != nil {
+			db.Close()
+			return nil, err
 		}
 	}
 	_ = os.Chmod(path, 0600)
@@ -113,6 +133,9 @@ func read[T any](db *sql.DB, table string) ([]T, error) {
 	return out, rows.Err()
 }
 func (s *Store) snapshot() (out model.State, e error) {
+	if out.Team, e = read[model.TeamSubscription](s.db, "team_sources"); e != nil {
+		return
+	}
 	if out.Hosts, e = read[model.Host](s.db, "hosts"); e != nil {
 		return
 	}
@@ -222,12 +245,35 @@ func (s *Store) Update(fn func(*model.State) error) error {
 	}, func() error {
 		return write(tx, "settings", []model.Settings{state.Settings}, func(v model.Settings) string { return "global" })
 	}}
+	actions = append(actions, func() error {
+		return write(tx, "team_sources", state.Team, func(v model.TeamSubscription) string { return v.Source.Feed })
+	})
 	for _, action := range actions {
 		if e = action(); e != nil {
 			return e
 		}
 	}
 	return tx.Commit()
+}
+
+// LocalValue stores application identity and feed scopes outside exported state.
+func (s *Store) LocalValue(id string, create func() ([]byte, error)) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var data []byte
+	err := s.db.QueryRow("SELECT data FROM local_metadata WHERE id=?", id).Scan(&data)
+	if err == nil {
+		return data, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) || create == nil {
+		return nil, err
+	}
+	data, err = create()
+	if err != nil {
+		return nil, err
+	}
+	_, err = s.db.Exec("INSERT INTO local_metadata(id,data) VALUES(?,?)", id, data)
+	return data, err
 }
 func (s *Store) Record(h model.Host, kind string, err error) {
 	s.mu.Lock()

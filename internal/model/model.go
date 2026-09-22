@@ -60,12 +60,27 @@ type Settings struct {
 	SSHConfig  string `json:"ssh_config"`
 }
 type State struct {
-	Hosts    []Host    `json:"hosts"`
-	Keys     []Key     `json:"keys"`
-	Tunnels  []Tunnel  `json:"tunnels"`
-	Services []Service `json:"services"`
-	History  []History `json:"history"`
-	Settings Settings  `json:"settings"`
+	Team     []TeamSubscription `json:"-"`
+	Hosts    []Host             `json:"hosts"`
+	Keys     []Key              `json:"keys"`
+	Tunnels  []Tunnel           `json:"tunnels"`
+	Services []Service          `json:"services"`
+	History  []History          `json:"history"`
+	Settings Settings           `json:"settings"`
+}
+
+// Team metadata is local-only and never part of configuration exports.
+type TeamSource struct {
+	URL       string `json:"url"`
+	Feed      string `json:"feed"`
+	PublicKey []byte `json:"public_key"`
+}
+type TeamSubscription struct {
+	Source   TeamSource        `json:"source"`
+	Items    map[string]string `json:"items"` // kind/id -> current or missing
+	LastSync string            `json:"last_sync"`
+	Error    string            `json:"error"`
+	Paused   bool              `json:"paused"`
 }
 
 func Env(s string) bool { return s == "LOCAL" || s == "DEV" || s == "STG" || s == "PROD" }

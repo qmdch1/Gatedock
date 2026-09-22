@@ -53,10 +53,10 @@ func TestMacPackageAndOpenSSHConfig(t *testing.T) {
 		t.Fatalf("expected config, instructions, installer, 2 keys; got %d", len(files))
 	}
 	dir := t.TempDir()
-	script := filepath.Join(dir, "install.command")
-	os.WriteFile(script, files["sshdesk-macos/install.command"], 0700)
 	if bash, err := exec.LookPath("bash"); err == nil {
-		if output, err := exec.Command(bash, "-n", script).CombinedOutput(); err != nil {
+		command := exec.Command(bash, "-n")
+		command.Stdin = bytes.NewReader(files["sshdesk-macos/install.command"])
+		if output, err := command.CombinedOutput(); err != nil {
 			t.Fatalf("installer syntax: %s", output)
 		}
 	}
