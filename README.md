@@ -166,7 +166,7 @@ Docker에서는 Windows 파일 선택창과 키 포함 Windows 실행파일 배�
 
 **가능합니다.** GitHub의 컨테이너 저장소인 **GHCR**에 이미지를 올리면 다른 PC나 클라우드 서버에서 받아 실행할 수 있습니다. 이미지는 프로그램만 담고, 개인 키·접속 설정·DB는 포함하지 않습니다.
 
-이 저장소의 **Actions → Publish container image → Run workflow**를 실행하면 이미지를 빌드해 `ghcr.io/qmdch1/gatedock:latest`와 해당 커밋 태그로 올립니다. 자동 게시를 원하지 않을 때 실행되지 않도록 수동 실행 방식으로 구성했습니다. **워크플로를 처음 실행하기 전에는 해당 이미지가 게시되어 있지 않습니다.** [GitHub 공식 안내](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)
+이 저장소의 **Actions → Publish container image → Run workflow**를 실행하면 이미지를 빌드해 `ghcr.io/qmdch1/gatedock:latest`와 해당 커밋 태그로 올립니다. 자동 게시를 원하지 않을 때 실행되지 않도록 수동 실행 방식으로 구성했습니다. **현재 `ghcr.io/qmdch1/gatedock:latest` 이미지가 게시되어 있습니다.** [GitHub 공식 안내](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)
 
 게시 후에는 다음과 같이 받을 수 있습니다. 비공개 패키지는 먼저 GHCR 로그인이 필요하며, 공개 배포 여부는 GitHub Packages에서 설정합니다.
 
