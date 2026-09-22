@@ -58,7 +58,7 @@ Windows에서 키까지 포함해 팀원에게 전달하려면 위의 **Windows 
 ### 1. Docker 준비 — 최초 한 번
 
 - **Linux:** Docker Engine과 Compose를 설치합니다.
-- **Windows / Mac:** Docker Desktop을 실행하고 **Settings → Resources → Network → Enable host networking**을 켭니다. Docker Desktop 4.34 이상, Linux 컨테이너 모드가 필요합니다. [Docker 공식 안내](https://docs.docker.com/engine/network/drivers/host/)
+- **Windows / Mac:** Docker Desktop을 실행하고 Linux 컨테이너 모드를 사용합니다. **host networking 설정은 필요 없습니다.** Compose가 관리 화면을 `127.0.0.1:9876`에 자동 연결합니다.
 
 ### 2. 빈 폴더에서 아래 명령 실행
 
@@ -101,7 +101,9 @@ docker compose up -d
 
 이 폴더는 읽기 전용으로 연결되며 이미지에 포함되지 않습니다. Linux에서는 컨테이너 사용자 UID 1000이 키를 읽을 수 있어야 합니다. 다른 폴더를 쓰려면 실행 전 `SSH_KEY_DIR` 환경변수에 절대 경로를 지정하세요.
 
-Docker에서는 Windows 파일 선택창과 키 포함 Windows 실행파일 배포를 지원하지 않습니다. 터널의 웹 페이지는 브라우저에 `http://127.0.0.1:설정한포트`를 입력해 여세요.
+Docker에서는 Windows 파일 선택창과 키 포함 Windows 실행파일 배포를 지원하지 않습니다. 터널의 **Local port는 18080~18089** 중 하나를 사용하면 별도 포트 설정 없이 접속할 수 있습니다. 웹 페이지는 브라우저에 `http://127.0.0.1:설정한포트`를 입력해 여세요.
+
+다른 포트가 필요하면 `compose.yaml`의 `ports`에 `"127.0.0.1:15432:15432"`처럼 추가하고 `docker compose up -d`를 실행하세요. 호스트 쪽 주소는 `127.0.0.1`로 유지합니다. 팀 다운로드용 9877 포트는 기본으로 공개하지 않습니다.
 
 </details>
 
@@ -129,7 +131,7 @@ docker compose down
 
 개발자가 새 버전을 게시할 때는 이 저장소의 **Actions → Publish container image → Run workflow**를 실행합니다. 프로그램만 빌드해 게시하며 SSH 키·개인 설정·DB는 포함하지 않습니다. [GitHub 공식 안내](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)
 
-클라우드 서버에서 실행할 때도 관리 화면은 로컬 주소로만 열립니다. 현재 사용자 로그인 기능이 없으므로 SSH 포워딩 등으로 접속하고 관리 포트를 인터넷에 공개하지 마세요. 이미지를 게시하는 것만으로 클라우드 서버가 생성되거나 웹 서비스가 실행되지는 않습니다.
+클라우드 서버에서 실행할 때도 Compose가 관리 포트를 서버의 로컬 주소로만 연결합니다. 현재 사용자 로그인 기능이 없으므로 SSH 포워딩 등으로 접속하고 관리 포트를 인터넷에 공개하지 마세요. 이미지를 게시하는 것만으로 클라우드 서버가 생성되거나 웹 서비스가 실행되지는 않습니다.
 
 </details>
 

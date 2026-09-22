@@ -108,6 +108,31 @@ func TestChangedConfigurationPreservesRunningTunnel(t *testing.T) {
 		t.Fatal("stopped tunnel marked pending")
 	}
 }
+
+func TestContainerListenerAndDefaultLoopback(t *testing.T) {
+	for _, container := range []bool{false, true} {
+		connector := &fakeConnector{}
+		manager := New(connector)
+		if container {
+			manager = NewContainer(connector)
+		}
+		config := tunnelFixture(t)
+		if err := manager.Start(context.Background(), config); err != nil {
+			t.Fatal(err)
+		}
+		address := manager.entries[config.ID].listener.Addr().(*net.TCPAddr)
+		if container && !address.IP.IsUnspecified() {
+			t.Fatal("container bind not reachable by bridge")
+		}
+		if !container && !address.IP.IsLoopback() {
+			t.Fatal("default listener exposed")
+		}
+		if manager.entries[config.ID].config.LocalHost != "127.0.0.1" {
+			t.Fatal("changed saved tunnel address")
+		}
+		manager.Close()
+	}
+}
 func tunnelFixture(t *testing.T) model.Tunnel {
 	return model.Tunnel{ID: "t", Name: "API", LocalHost: "127.0.0.1", LocalPort: freePort(t), RemoteHost: "127.0.0.1", RemotePort: 80, HostID: "h", AutoReconnect: true}
 }

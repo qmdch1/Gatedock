@@ -24,4 +24,4 @@ STOPSIGNAL SIGINT
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
     CMD wget -q -O /dev/null http://127.0.0.1:9876/health || exit 1
 ENTRYPOINT ["/usr/local/bin/sshdesk"]
-CMD ["-no-browser", "-data-dir", "/data"]
+CMD ["-no-browser", "-container-network", "-data-dir", "/data"]

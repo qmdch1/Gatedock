@@ -31,6 +31,7 @@ type entry struct {
 	stopped  bool
 }
 type Manager struct {
+	containerNetwork  bool
 	mu                sync.Mutex
 	entries           map[string]*entry
 	Connector         sshclient.Connector
@@ -40,6 +41,14 @@ type Manager struct {
 
 func New(c sshclient.Connector) *Manager {
 	return &Manager{entries: map[string]*entry{}, Connector: c, KeepAliveInterval: 30 * time.Second}
+}
+
+// NewContainer allows Docker's bridge to reach forwarded ports. The host must
+// publish these ports on 127.0.0.1, never on an external interface.
+func NewContainer(c sshclient.Connector) *Manager {
+	m := New(c)
+	m.containerNetwork = true
+	return m
 }
 func (m *Manager) Statuses() map[string]Status {
 	m.mu.Lock()
@@ -80,7 +89,11 @@ func (m *Manager) Start(ctx context.Context, t model.Tunnel) error {
 		}
 		return errors.New("터널 연결이 진행 중입니다")
 	}
-	listener, e := net.Listen("tcp4", net.JoinHostPort(t.LocalHost, fmt.Sprint(t.LocalPort)))
+	bindHost := t.LocalHost
+	if m.containerNetwork {
+		bindHost = "0.0.0.0"
+	}
+	listener, e := net.Listen("tcp4", net.JoinHostPort(bindHost, fmt.Sprint(t.LocalPort)))
 	if e != nil {
 		m.entries[t.ID] = &entry{status: Status{State: "error", LastError: "Local Port 사용 중 또는 bind 실패: " + e.Error()}}
 		m.mu.Unlock()

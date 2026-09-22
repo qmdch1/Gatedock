@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sshdesk/internal/database"
 	"sshdesk/internal/model"
 	"sshdesk/internal/platform"
@@ -38,7 +39,11 @@ func run() error {
 	noBrowser := flag.Bool("no-browser", false, "disable automatic browser opening")
 	noImport := flag.Bool("no-auto-import", false, "disable startup SSH config import")
 	share := flag.Bool("share", false, "enable local-network download page on port 9877")
+	containerNetwork := flag.Bool("container-network", false, "listen on container interfaces; publish Docker ports on host loopback only")
 	flag.Parse()
+	if *containerNetwork && runtime.GOOS != "linux" {
+		return errors.New("container-network is only supported by the Linux container image")
+	}
 	if !model.Port(*port) {
 		return errors.New("invalid HTTP port")
 	}
@@ -47,7 +52,11 @@ func run() error {
 	}
 	// Acquire the port before opening the database; a second instance fails without touching it.
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
-	listener, e := net.Listen("tcp4", addr)
+	listenAddr := addr
+	if *containerNetwork {
+		listenAddr = fmt.Sprintf("0.0.0.0:%d", *port)
+	}
+	listener, e := net.Listen("tcp4", listenAddr)
 	if e != nil {
 		return fmt.Errorf("%s 사용 중입니다. 실행 중인 SSHDesk를 확인하세요: %w", addr, e)
 	}
@@ -81,6 +90,9 @@ func run() error {
 	}
 	ssh := &sshclient.Manager{Store: store}
 	tm := tunnel.New(ssh)
+	if *containerNetwork {
+		tm = tunnel.NewContainer(ssh)
+	}
 	origin := "http://" + addr
 	app, e := web.New(store, ssh, tm, origin)
 	if e != nil {
