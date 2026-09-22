@@ -22,8 +22,9 @@ import (
 var migrations embed.FS
 
 type Store struct {
-	db *sql.DB
-	mu sync.Mutex
+	db      *sql.DB
+	dataDir string
+	mu      sync.Mutex
 }
 
 func ID() string {
@@ -42,7 +43,7 @@ func Open(path string, defaults model.Settings) (*Store, error) {
 		return nil, e
 	}
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db}
+	s := &Store{db: db, dataDir: filepath.Dir(path)}
 	if _, e = db.Exec("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;"); e != nil {
 		db.Close()
 		return nil, e
@@ -309,3 +310,6 @@ func Delete[T any](xs []T, id string, getID func(T) string) ([]T, error) {
 	}
 	return xs, errors.New("record not found")
 }
+
+// DataDir is the persistent directory containing this database.
+func (s *Store) DataDir() string { return s.dataDir }

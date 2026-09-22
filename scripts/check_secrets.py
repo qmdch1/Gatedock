@@ -18,7 +18,7 @@ patterns = {
 blocked = []
 for name in filter(None, paths):
     path = PurePosixPath(name)
-    if any(p in {".tools", ".test-data", ".ssh", "secrets", "exports", "backups", "keys", "local", "dist"} for p in path.parts) or re.search(r"(?:\.pem|\.key|\.ppk|\.p12|\.pfx|\.db(?:-.*)?|\.sqlite.*|\.json|\.exe)$", name, re.IGNORECASE) or path.name.startswith(".env"):
+    if any(p in {".tools", ".test-data", ".ssh", "secrets", "exports", "backups", "keys", "uploaded-keys", "local", "dist"} for p in path.parts) or re.search(r"(?:\.pem|\.key|\.ppk|\.p12|\.pfx|\.db(?:-.*)?|\.sqlite.*|\.json|\.exe)$", name, re.IGNORECASE) or path.name.startswith(".env"):
         blocked.append((name, "sensitive/runtime file path"))
     content = git("show", ":" + name)
     for rule, pattern in patterns.items():

@@ -37,7 +37,7 @@ const pages = {
   hosts: ["Hosts", "Bastion과 내부 서버를 등록하고, 경유 연결을 관리하세요."],
   tunnels: ["Tunnels", "복잡한 포트 포워딩을 클릭 한 번으로 시작하세요."],
   terminal: ["Terminal", "브라우저에서 바로 연결하는 SSH 터미널."],
-  keys: ["Keys", "키는 내 컴퓨터에. SSHDesk에는 파일 경로만 저장됩니다."],
+  keys: ["Keys", "파일 선택 또는 SSHDesk 실행 환경의 경로로 키를 등록합니다."],
   settings: ["Settings", "로컬 워크스페이스와 SSH 설정을 관리하세요."],
   sharing: ["팀 공유", "같은 로컬망의 팀원이 실행파일과 설정을 다운로드합니다."],
 };
@@ -265,12 +265,12 @@ function keyTable(items) {
       "PEM, RSA, ED25519 개인 키 파일의 경로를 등록하세요.",
       button("+ Add key", "add", "", "keys"),
     );
-  return `<div class="table-wrap"><table><thead><tr><th>Name</th><th>File path</th><th>Storage</th><th>Actions</th></tr></thead><tbody>${items.map((k) => `<tr class="${sharedClass("keys", k.id)}"><td class="name-cell">${esc(k.name)}${sharedBadge("keys", k.id)}</td><td class="mono">${esc(k.path)}</td><td><span class="status connected">Path only</span></td><td><div class="actions">${button("Validate", "check", k.id, "keys", "small")}${button("Edit", "edit", k.id, "keys", "small ghost")}${button("Delete", "delete", k.id, "keys", "small ghost danger")}</div></td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Name</th><th>File path</th><th>Storage</th><th>Actions</th></tr></thead><tbody>${items.map((k) => `<tr class="${sharedClass("keys", k.id)}"><td class="name-cell">${esc(k.name)}${sharedBadge("keys", k.id)}</td><td class="mono">${esc(k.path)}</td><td><span class="status connected">DB: path only</span></td><td><div class="actions">${button("Validate", "check", k.id, "keys", "small")}${button("Edit", "edit", k.id, "keys", "small ghost")}${button("Delete", "delete", k.id, "keys", "small ghost danger")}</div></td></tr>`).join("")}</tbody></table></div>`;
 }
 function settings() {
   const v = state.settings;
   $("#content").innerHTML =
-    `<div class="settings-grid">${panel("SSH settings", "원본 config와 known_hosts는 수정하지 않습니다.", `<form id="settings-form" class="panel-body"><label>Known hosts file<input name="known_hosts" required value="${esc(v.known_hosts)}"></label><label>SSH config file<input name="ssh_config" required value="${esc(v.ssh_config)}"></label><div class="actions"><button class="primary">Save settings</button>${button("↓ Import preview", "import")}</div></form>`)}${panel("Security defaults", "로컬에서 실행되는 개인용 연결 도구", `<div class="panel-body"><ul><li>HTTP 및 터널: 127.0.0.1 전용</li><li>SSH 서버 키: known_hosts 또는 검증된 SHA256 지문</li><li>키 원문 및 비밀번호 저장 안 함</li><li>CSRF / WebSocket Origin 검사</li><li>앱 종료 시 터미널과 터널 종료</li><li>시작 시 터널 자동 실행 안 함</li></ul><p class="note">PROD는 빨간색으로 표시됩니다. 가져온 Host의 기본 환경은 DEV이므로 실제 환경에 맞게 수정하세요.</p></div>`)}</div><div id="import-preview"></div>`;
+    `<div class="settings-grid">${panel("SSH settings", "원본 config와 known_hosts는 수정하지 않습니다.", `<form id="settings-form" class="panel-body"><label>Known hosts file<input name="known_hosts" required value="${esc(v.known_hosts)}"></label><label>SSH config file<input name="ssh_config" required value="${esc(v.ssh_config)}"></label><div class="actions"><button class="primary">Save settings</button>${button("↓ Import preview", "import")}</div></form>`)}${panel("Security defaults", "로컬에서 실행되는 개인용 연결 도구", `<div class="panel-body"><ul><li>HTTP 및 터널: 127.0.0.1 전용</li><li>SSH 서버 키: known_hosts 또는 검증된 SHA256 지문</li><li>키는 보호된 파일로 보관 · 비밀번호 저장 안 함</li><li>CSRF / WebSocket Origin 검사</li><li>앱 종료 시 터미널과 터널 종료</li><li>시작 시 터널 자동 실행 안 함</li></ul><p class="note">PROD는 빨간색으로 표시됩니다. 가져온 Host의 기본 환경은 DEV이므로 실제 환경에 맞게 수정하세요.</p></div>`)}</div><div id="import-preview"></div>`;
   setupBackupUI();
   if (startupImport) {
     const r = startupImport;
@@ -422,14 +422,14 @@ function editor(kind, id = "") {
         else
           input = `<input name="${name}" type="${type}" value="${esc(value)}" ${name === "local_host" ? "readonly" : ""} ${type === "number" ? 'min="1" max="65535"' : ""} ${name === "fingerprint" ? 'placeholder="SHA256:…"' : "required"} maxlength="1024">`;
         if (kind === "keys" && name === "path")
-          input = `<span class="file-path-picker">${input}<button type="button" id="pick-key-file">파일 선택…</button></span>`;
+          input = `<span class="file-path-picker">${input}<button type="button" id="pick-key-file">파일 선택…</button><input type="file" id="key-upload" hidden></span>`;
         return `<label class="${["description", "fingerprint", "path", "url"].includes(name) ? "full" : ""} ${type === "checkbox" ? "check-label" : ""}">${label}${input}</label>`;
       })
       .join("") +
     (kind === "hosts"
       ? '<p class="note full">알 수 없는 서버 키는 자동으로 신뢰하지 않습니다. known_hosts를 사용하거나 관리자에게 별도로 확인한 SHA256 지문을 입력하세요.</p>'
       : kind === "keys"
-        ? '<p class="note full">로컬 파일 경로만 저장합니다. 암호화된 private key의 passphrase 입력은 향후 지원합니다.</p>'
+        ? '<p class="note full">Windows·Mac 브라우저에서 파일을 선택할 수 있습니다. Save를 누르면 SSHDesk 실행 환경(WSL·Docker 포함)에 키가 복사됩니다. 직접 경로 입력도 가능합니다. 암호화된 키는 아직 지원하지 않습니다.</p>'
         : "");
   if (kind === "tunnels") {
     const links = state.services.filter((s) => s.tunnel_id === id);
@@ -454,21 +454,20 @@ function editor(kind, id = "") {
   if (kind === "keys") {
     const picker = $("#pick-key-file");
     const pathInput = $('#editor-fields input[name="path"]');
-    picker.onclick = async () => {
-      picker.disabled = true;
-      picker.textContent = "선택 중…";
-      $("#form-error").textContent = "";
-      try {
-        const result = await api("keys/pick-file", "POST");
-        if (!result.cancelled && pathInput.isConnected && $("#editor").open)
-          pathInput.value = result.path;
-      } catch (err) {
-        if (pathInput.isConnected) $("#form-error").textContent = err.message;
-      } finally {
-        picker.disabled = false;
-        picker.textContent = "파일 선택…";
+    const upload = $("#key-upload");
+    picker.onclick = () => upload.click();
+    upload.onchange = () => {
+      const file = upload.files[0];
+      if (!file) return;
+      if (file.size > 1024 * 1024 || file.size === 0) {
+        upload.value = "";
+        $("#form-error").textContent = "키는 1 MiB 이하의 비어 있지 않은 파일이어야 합니다";
+        return;
       }
+      $("#form-error").textContent = "";
+      pathInput.value = file.name;
     };
+    pathInput.oninput = () => { upload.value = ""; };
   }
   $("#editor").showModal();
 }
@@ -492,7 +491,16 @@ $("#editor-form").onsubmit = async (e) => {
     if (type === "checkbox") data[name] = e.target.elements[name].checked;
   }
   try {
-    await api(editing.kind, "POST", data);
+    const file = editing.kind === "keys" ? $("#key-upload").files[0] : null;
+    if (file) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = "";
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      await api("keys/upload", "POST", { id: data.id, name: data.name, content: btoa(binary) });
+      bytes.fill(0);
+    } else {
+      await api(editing.kind, "POST", data);
+    }
     $("#editor").close();
     await refresh();
     toast("저장했습니다");

@@ -40,3 +40,6 @@ authorized_keys*
 *.json
 ssh_config
 ssh-config
+
+# Browser-selected keys persisted beside the local database.
+uploaded-keys/
