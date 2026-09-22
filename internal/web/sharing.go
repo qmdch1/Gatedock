@@ -312,7 +312,7 @@ func (s *Server) shareHandler() http.Handler {
 
 var sharePage = template.Must(template.New("share").Parse(strings.TrimSpace(`<!doctype html>
 <html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SSHDesk 팀 다운로드</title>
-<style>body{font:16px/1.7 'Segoe UI',sans-serif;background:#f5f7fa;color:#172b43;margin:0}main{max-width:700px;margin:10vh auto;padding:36px;background:white;border:1px solid #d6dee8;border-radius:16px}a{display:inline-block;background:#087c65;color:white;padding:14px 22px;margin:8px 8px 8px 0;border-radius:8px;text-decoration:none}small{color:#52647a}</style>
+<style>body{font:16px/1.7 'Segoe UI',sans-serif;background:#f5f7fa;color:#172b43;margin:0}main{max-width:700px;margin:10vh auto;padding:36px;background:white;border:1px solid #d6dee8;border-radius:16px}a{display:inline-block;background:#087c65;color:white;padding:14px 22px;margin:8px 8px 8px 0;border-radius:8px;text-decoration:none}small{color:#52647a}.download-option{border:1px solid #d6dee8;border-radius:12px;padding:20px;margin:16px 0}.download-option h3{margin:0 0 8px;font-size:18px}.recommended{border-color:#8ccbbb;background:#f2faf7}a.secondary{background:#e9eef4;color:#172b43}@media(max-width:600px){main{margin:16px;padding:20px}a{box-sizing:border-box;max-width:100%}}</style>
 <main><h1>SSHDesk 팀 다운로드</h1><p>SSH 접속과 터널 설정을 팀원들과 공유하세요.</p>
 {{if .Mac}}<p><strong>Mac에서 접속하셨습니다. 아래 macOS 설정 묶음을 사용하세요.</strong></p>{{end}}
 <h2>macOS SSH 설정</h2>
@@ -322,10 +322,21 @@ var sharePage = template.Must(template.New("share").Parse(strings.TrimSpace(`<!d
 <p>ZIP을 풀고 해당 폴더에서 <code>bash install.command</code>를 실행하세요. 기존 SSH 설정을 보존하며, README.txt에 호스트 접속·터널 연결 명령이 들어 있습니다.</p>
 <p>{{if .Prepared}}선택한 개인 키가 ZIP에도 포함됩니다. 안전하게 보관하세요.{{else}}개인 키는 포함되지 않습니다. README.txt의 안내대로 본인의 키를 넣어 주세요.{{end}} Mac용 앱이 아닌 macOS 기본 SSH용 설정입니다.</p>
 <h2>Windows</h2>
-<a href="/download/sshdesk.exe" download>{{if .Prepared}}키·호스트 포함 실행파일 다운로드{{else}}Windows 실행파일 다운로드{{end}}</a>
-<a href="/download/configuration" download>팀 설정파일 다운로드</a>
-{{if .Prepared}}<p>처음 실행하면 키·호스트·터널·웹 바로가기가 자동 등록됩니다. 이후 원본 PC가 공유 중이면 앱이 30초마다 추가·수정을 반영합니다. 원본에서 제거된 항목은 삭제하지 않고 보관 표시로 남깁니다. 개인이 만든 항목은 유지합니다.</p><p>이 실행파일에는 개인 키가 들어 있습니다. 팀 외부나 공개 저장소에 전달하지 마세요. 서버 지문/known_hosts는 별도로 확인해야 할 수 있습니다.</p>
-{{else}}<ol><li>실행파일을 다운로드하고 내 PC에서 실행합니다.</li><li>Settings → Configuration backup에서 팀 설정파일을 가져옵니다.</li><li>내 SSH 키 경로와 계정을 확인한 뒤 연결합니다.</li></ol>{{end}}
+<div class="download-option recommended">
+<h3>{{if .Prepared}}처음이라면 이 파일 하나로 시작하세요{{else}}먼저 프로그램을 받으세요{{end}}</h3>
+<a href="/download/sshdesk.exe" download>{{if .Prepared}}프로그램 + 팀 접속 설정 받기 (추천){{else}}Windows 프로그램 받기{{end}}</a>
+{{if .Prepared}}<p>프로그램, 서버 목록, 터널 설정, 서버 접속에 필요한 키가 함께 들어 있습니다. <strong>다운로드한 파일을 실행하면 자동으로 설정됩니다.</strong> 아래 설정파일은 따로 받지 않아도 됩니다.</p>
+<p>원본 PC가 공유 중이면 서버 목록과 연결 설정의 변경 사항도 자동으로 받습니다.</p>
+<small>접속용 개인 키가 포함되어 있으니 팀 외부에 전달하지 마세요. 처음 서버에 접속할 때 서버 확인이 필요할 수 있습니다.</small>
+{{else}}<p>SSHDesk 프로그램만 들어 있습니다. 실행한 뒤 아래 설정파일을 가져오고, 본인의 서버 접속용 키를 등록하세요.</p>{{end}}
+</div>
+<div class="download-option">
+<h3>이미 프로그램이 있고, 설정만 가져오고 싶다면</h3>
+<a class="secondary" href="/download/configuration" download>서버 목록·연결 설정만 받기</a>
+<p>서버 목록과 터널 연결 정보만 들어 있습니다. <strong>프로그램과 서버 접속용 키는 포함되지 않습니다.</strong></p>
+<p>SSHDesk의 <strong>Settings → Configuration backup</strong>에서 파일을 선택하고 <strong>Preview → Import configuration</strong>을 눌러 가져오세요. 본인의 키 파일 경로를 확인해야 합니다.</p>
+<small>이 파일을 가져오는 것만으로는 자동 갱신되지 않습니다. 원본 설정이 바뀌면 다시 받아 가져와야 합니다.</small>
+</div>
 <small>JSON 설정파일에는 개인 키가 포함되지 않습니다. 이 페이지에서는 서버에 접속하거나 설정을 수정할 수 없습니다.</small></main></html>`)))
 
 // A UDP route lookup selects the outbound interface without sending packets.
