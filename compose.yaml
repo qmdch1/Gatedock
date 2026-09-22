@@ -1,7 +1,8 @@
 services:
   sshdesk:
-    build: .
-    image: gatedock:local
+    image: ghcr.io/qmdch1/gatedock:latest
+    platform: linux/amd64
+    pull_policy: always
     # Required: the app and all dynamically created tunnels bind to loopback.
     network_mode: host
     restart: unless-stopped
