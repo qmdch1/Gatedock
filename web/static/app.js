@@ -352,12 +352,12 @@ async function sharing() {
       <div class="actions share-main-actions"><button type="button" id="share-publish" class="primary">${info.enabled ? "선택 내용 적용" : "공유 시작"}</button><button type="button" id="share-stop" ${info.enabled ? "" : "hidden"}>공유 중지</button></div>
       <div class="share-address"><label>팀원에게 보낼 주소<input id="share-url" readonly value="${esc(info.primary_url || "")}" placeholder="사용 가능한 로컬망 주소가 없습니다"></label><button type="button" id="share-copy" ${info.enabled && info.primary_url ? "" : "disabled"}>주소 복사</button></div>
       <p id="share-package-status" class="muted">${info.enabled ? (info.prepared ? "키와 호스트·터널이 포함된 배포본을 공유 중입니다." : "키 없이 프로그램과 설정만 공유 중입니다.") : "공유 시작을 누르면 선택한 키와 설정으로 배포본을 준비합니다."}</p>
-      <details class="share-options"><summary>공유할 키 · <span id="share-selected-count"></span></summary>
+      <details class="share-options" open><summary>공유할 키 · <span id="share-selected-count"></span></summary>
       <div class="actions share-selection-actions"><button type="button" id="share-select-all">전체 선택</button><button type="button" id="share-clear-all">전체 해제</button></div>
       ${state.keys.map(k => `<label class="check-label"><input type="checkbox" name="share-key" value="${esc(k.id)}" ${shareKeySelection.has(k.id) ? "checked" : ""}>${esc(k.name)}</label>`).join("") || '<p>등록된 키가 없어 설정만 공유합니다.</p>'}
       <div id="share-host-preview"></div></details>
       <p class="note">선택한 개인 키가 포함됩니다. 신뢰하는 같은 로컬망의 팀원에게만 주소를 전달하세요.</p>
-      <details class="share-options"><summary>접속 현황·추가 안내</summary>
+      <details class="share-options" open><summary>접속 현황·추가 안내</summary>
       <h3>최근 동기화 PC</h3><div id="share-peer-list">${(info.peers || []).map(p => `<p>${esc(p.ip)} · ${esc(new Date(p.last_seen).toLocaleTimeString())}</p>`).join("") || "<p>아직 동기화 요청이 없습니다.</p>"}</div>
       ${info.urls.length > 1 ? `<h3>다른 네트워크 주소</h3>${info.urls.filter(url => url !== info.primary_url).map(url => `<p>${esc(url)}</p>`).join("")}` : ""}
       <p>Windows 팀 배포본은 Windows에서 제공합니다. Mac은 SSH 설정 묶음을 받으면 됩니다. 새 Windows 팀 배포본으로 등록한 팀원에게 호스트·터널 변경이 30초마다 반영되며 삭제된 항목은 보관됩니다. 키 변경 시에는 새 배포본을 받으세요.</p>
