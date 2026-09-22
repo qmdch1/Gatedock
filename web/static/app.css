@@ -25,7 +25,7 @@
 body {
   margin: 0;
   font:
-    14px/1.55 "Segoe UI",
+    15px/1.6 "Segoe UI",
     Arial,
     sans-serif;
   background: var(--bg);
@@ -69,7 +69,7 @@ button.danger {
 }
 button.small {
   padding: 5px 9px;
-  font-size: 12px;
+  font-size: 14px;
 }
 button.ghost {
   background: transparent;
@@ -97,9 +97,9 @@ button.ghost {
 }
 .brand small {
   display: block;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 1.8px;
+  letter-spacing: 0.8px;
   color: var(--muted);
   margin-top: 1px;
 }
@@ -118,7 +118,7 @@ button.ghost {
   margin: 28px 0 29px;
   padding: 11px 8px;
   border-block: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 14px;
   color: #41556e;
   display: flex;
   align-items: center;
@@ -135,12 +135,12 @@ button.ghost {
 .tag {
   background: #e8eef5;
   border-radius: 3px;
-  font-size: 8px;
+  font-size: 11px;
   padding: 1px 4px;
   margin-left: auto;
 }
 .nav-label {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.7px;
   color: #53677e;
   margin: 0 12px 12px;
@@ -154,7 +154,7 @@ nav a {
   text-decoration: none;
   margin: 3px 0;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 15px;
 }
 nav a > span:first-child {
   font: 18px monospace;
@@ -173,14 +173,14 @@ nav a.active > span:first-child {
 }
 .nav-count {
   margin-left: auto;
-  font-size: 10px;
+  font-size: 13px;
   background: #e7edf4;
   padding: 0 6px;
   border-radius: 4px;
 }
 .sidebar-bottom {
   margin-top: auto;
-  font-size: 11px;
+  font-size: 14px;
   color: #354f68;
   padding: 12px 10px 0;
 }
@@ -189,7 +189,7 @@ nav a.active > span:first-child {
 }
 .sidebar-bottom small {
   display: block;
-  font-size: 10px;
+  font-size: 13px;
   color: #586a80;
   margin: 7px 0 23px;
 }
@@ -199,7 +199,7 @@ nav a.active > span:first-child {
   color: #586a80;
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 13px;
 }
 .shell {
   margin-left: 232px;
@@ -213,7 +213,7 @@ nav a.active > span:first-child {
   justify-content: space-between;
   padding: 0 35px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .topbar strong {
   font-weight: 500;
@@ -229,7 +229,7 @@ nav a.active > span:first-child {
   gap: 25px;
 }
 .secure {
-  font-size: 10px;
+  font-size: 13px;
   color: #376557;
 }
 .avatar {
@@ -240,7 +240,7 @@ nav a.active > span:first-child {
   background: #e8eef5;
   border: 1px solid #c2cedd;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 13px;
 }
 main {
   max-width: 1640px;
@@ -255,7 +255,7 @@ main {
   gap: 20px;
 }
 .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 1.9px;
   color: #52677f;
@@ -276,7 +276,7 @@ p {
   margin: 7px 0;
 }
 .page-header p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .actions {
   display: flex;
@@ -297,7 +297,7 @@ p {
   position: relative;
 }
 .metric-label {
-  font-size: 11px;
+  font-size: 14px;
   color: #455b74;
 }
 .metric-number {
@@ -308,7 +308,7 @@ p {
   font-variant-numeric: tabular-nums;
 }
 .metric small {
-  font-size: 10px;
+  font-size: 13px;
   color: #586b80;
 }
 .metric-icon {
@@ -336,11 +336,11 @@ p {
   border-bottom: 1px solid var(--line);
 }
 .panel-head p {
-  font-size: 11px;
+  font-size: 14px;
   margin: 3px 0 0;
 }
 .panel-head h2 {
-  font-size: 14px;
+  font-size: 17px;
 }
 .panel-body {
   padding: 21px;
@@ -352,7 +352,7 @@ p {
 }
 .count-pill {
   margin-left: 8px;
-  font-size: 10px;
+  font-size: 13px;
   background: #e8eef5;
   padding: 1px 6px;
   color: #425b75;
@@ -370,7 +370,7 @@ table {
 th {
   font-weight: 500;
   letter-spacing: 0.6px;
-  font-size: 11px;
+  font-size: 14px;
   text-transform: uppercase;
   color: #425b75;
   background: #f0f4f8;
@@ -379,7 +379,7 @@ th {
 }
 td {
   padding: 15px 18px;
-  font-size: 12px;
+  font-size: 14px;
   border-bottom: 1px solid #e0e6ee;
 }
 tr:last-child td {
@@ -394,21 +394,21 @@ tr:hover td {
 }
 .subline {
   display: block;
-  font-size: 10px;
+  font-size: 13px;
   color: #526781;
   font-weight: 400;
   margin-top: 3px;
 }
 .mono {
   font-family: Consolas, "Cascadia Code", monospace;
-  font-size: 11px;
+  font-size: 14px;
 }
 .muted {
   color: var(--muted);
 }
 .env {
   display: inline-block;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.6px;
   padding: 2px 7px;
@@ -436,7 +436,7 @@ tr:hover td {
   border-color: #dc8a9a;
 }
 .status {
-  font-size: 10px;
+  font-size: 13px;
   color: #52647a;
   display: inline-flex;
   align-items: center;
@@ -473,10 +473,10 @@ tr:hover td {
 .empty strong {
   display: block;
   color: #243b55;
-  font-size: 13px;
+  font-size: 15px;
 }
 .empty p {
-  font-size: 11px;
+  font-size: 14px;
   margin: 8px auto 16px;
   max-width: 350px;
 }
@@ -495,7 +495,7 @@ tr:hover td {
   color: var(--accent);
 }
 .onboarding p {
-  font-size: 11px;
+  font-size: 14px;
 }
 .onboarding button {
   margin-left: auto;
@@ -507,14 +507,14 @@ tr:hover td {
   justify-content: space-between;
   padding: 13px 0;
   border-bottom: 1px solid #e0e6ee;
-  font-size: 12px;
+  font-size: 14px;
 }
 .health-row:last-child,
 .activity:last-child {
   border: 0;
 }
 .health-row small {
-  font-size: 10px;
+  font-size: 13px;
   color: #536981;
 }
 .activity {
@@ -526,11 +526,11 @@ tr:hover td {
   min-width: 0;
 }
 .activity p {
-  font-size: 10px;
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 .activity time {
-  font-size: 9px;
+  font-size: 12px;
   color: #526781;
   white-space: nowrap;
 }
@@ -561,7 +561,7 @@ tr:hover td {
 }
 .toolbar .muted {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 14px;
 }
 input,
 select,
@@ -589,7 +589,7 @@ input[type="checkbox"] {
   accent-color: var(--accent);
 }
 label {
-  font-size: 11px;
+  font-size: 14px;
   color: #344b65;
   display: block;
 }
@@ -599,7 +599,7 @@ label textarea {
   margin-top: 6px;
 }
 label small {
-  font-size: 10px;
+  font-size: 13px;
   color: #536981;
 }
 .form-grid {
@@ -615,7 +615,7 @@ label small {
   overflow-wrap: anywhere;
 }
 .note {
-  font-size: 11px;
+  font-size: 14px;
   color: #2b5377;
   background: #edf5ff;
   border: 1px solid #bfd4ec;
@@ -629,7 +629,7 @@ label small {
   border-radius: 7px;
   color: #a91632;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 14px;
   margin-bottom: 14px;
 }
 .terminal-top {
@@ -644,7 +644,7 @@ label small {
 .terminal-top small {
   display: block;
   font:
-    11px Consolas,
+    13px Consolas,
     monospace;
   color: #526781;
   margin-top: 4px;
@@ -662,7 +662,7 @@ label small {
   background: #f0f4f8;
   padding: 8px 16px;
   font:
-    10px Consolas,
+    13px Consolas,
     monospace;
   color: #526781;
   display: flex;
@@ -672,7 +672,7 @@ label small {
   border-radius: 0 0 6px 6px;
 }
 #terminal-time {
-  font-size: 10px;
+  font-size: 13px;
   color: #526781;
 }
 .service-grid {
@@ -709,7 +709,7 @@ label small {
   margin-top: 20px;
 }
 .service-card p {
-  font-size: 11px;
+  font-size: 14px;
   min-height: 18px;
 }
 dialog {
@@ -766,7 +766,7 @@ dialog::backdrop {
   box-shadow: 0 10px 50px #172b4326;
   max-width: 650px;
   z-index: 10;
-  font-size: 12px;
+  font-size: 14px;
 }
 #toast.error {
   background: #fff0f2;
@@ -778,7 +778,7 @@ footer {
   justify-content: space-between;
   margin-top: 32px;
   color: #586b80;
-  font-size: 10px;
+  font-size: 13px;
   padding-top: 18px;
   border-top: 1px solid #d6dee8;
 }
@@ -786,11 +786,18 @@ footer {
   margin-top: 20px;
 }
 .check-label {
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 36px;
+  overflow-wrap: anywhere;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .check-label input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
   margin: 0;
 }
 .settings-grid {
@@ -804,7 +811,7 @@ footer {
 .settings-grid li {
   color: #455b74;
   margin: 10px 0;
-  font-size: 12px;
+  font-size: 14px;
 }
 .env-legend {
   display: flex;
@@ -929,7 +936,7 @@ a:focus-visible {
 .source-missing { background: #f3f4f6; }
 .source-missing > td { color: #6b7280; }
 .source-missing .name-cell { color: #6b7280; }
-.sync-badge { display: block; width: fit-content; margin-top: 5px; padding: 2px 7px; border-radius: 5px; font-size: 11px; font-weight: 500; background: #e6f4ef; color: #256250; }
+.sync-badge { display: block; width: fit-content; margin-top: 5px; padding: 2px 7px; border-radius: 5px; font-size: 14px; font-weight: 500; background: #e6f4ef; color: #256250; }
 .sync-badge.missing { background: #e5e7eb; color: #4b5563; }
 .sync-source { padding: 16px 0; border-top: 1px solid #d6dee8; }
 .sync-address { display: flex; align-items: end; gap: 8px; margin-top: 12px; }
