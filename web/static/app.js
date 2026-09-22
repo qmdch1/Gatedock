@@ -281,7 +281,7 @@ function settings() {
     `<div class="settings-grid">${panel("SSH settings", "파일 이름을 누르면 오른쪽에서 편집할 수 있습니다.", `<form id="settings-form" class="panel-body">${fileField("known_hosts", "Known hosts file")}${fileField("ssh_config", "SSH config file")}<p class="note">파일 선택 후 저장하면 SSHDesk 실행 환경에 복사됩니다. config 안의 키 경로는 실행 환경에 맞게 지정하세요.</p><div class="actions"><button class="primary">Save settings</button>${button("↓ Import preview", "import")}</div></form>`)}${panel("파일 편집", "SSH config · known_hosts", `<div class="panel-body settings-editor"><p id="settings-editor-path" class="mono wrap">왼쪽에서 편집할 파일 이름을 누르세요.</p><textarea id="settings-editor-text" aria-label="설정 파일 내용" spellcheck="false" disabled></textarea><div class="actions"><button type="button" id="settings-editor-save" class="primary" disabled>파일 저장</button><button type="button" id="settings-editor-reload" disabled>다시 열기</button><span id="settings-editor-status" role="status"></span></div></div>`)}</div><div id="import-preview"></div>`;
   setupBackupUI();
   setupSettingsEditor();
-  if (startupImport) {
+  if (startupImport?.imported > 0) {
     const r = startupImport;
     const report = document.createElement("section");
     report.className = "panel";

@@ -34,3 +34,5 @@
 - Keep management text readable: 15px base text, 14px forms/table text/help/small buttons, and 16px checkbox/key labels with 18px checkboxes and comfortable row spacing. Reserve smaller text for decorative branding or compact badges; inspect wrapping at desktop and narrow widths after typography changes.
 
 - Settings replaces Security defaults with a right-side editor for the registered SSH config and known_hosts files. Explicit user saves may edit these files in place; never auto-edit them. Restrict editor access to registered settings paths, reject private-key/binary/oversized files and symlinks, validate text, preserve permissions, detect stale content/path revisions, and atomically replace on Save. Warn before discarding unsaved edits. Read-only Docker mounts require importing a writable copy first.
+
+- Show the Settings Startup SSH import report only when startupImport.imported > 0. Hide it when no new records were imported, including missing config, disabled import and existing-only results.
