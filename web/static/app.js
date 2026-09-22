@@ -25,6 +25,7 @@ let state = {
   envFilter = "",
   editing = null,
   busy = false;
+let shareKeySelection = null;
 let term = null,
   fit = null,
   socket = null,
@@ -90,6 +91,7 @@ async function refresh(render = true) {
   if (current === "sharing") {
     renderTeamSync();
     const info = await api("sharing");
+    renderSharingStatus(info);
     const peers = $("#share-peer-list");
     if (peers) peers.innerHTML = '<p class="muted">최근 5분간 원본 설정을 확인한 IP입니다. 같은 IP의 여러 앱은 하나로 표시됩니다.</p>' + ((info.peers || []).map(p => `<p>${esc(p.ip)} · ${esc(new Date(p.last_seen).toLocaleTimeString())}</p>`).join("") || "<p>아직 동기화 요청이 없습니다.</p>");
   }
@@ -290,17 +292,29 @@ function settings() {
     }
   };
 }
+function renderSharingStatus(info) {
+  const banner = $("#sharing-status");
+  if (!banner) return;
+  banner.className = "sharing-status " + (info.enabled ? "is-on" : "is-off");
+  banner.innerHTML = `<strong>${info.enabled ? "● 공유 켜짐" : "○ 공유 꺼짐"}</strong><span>${info.enabled ? "팀 다운로드 페이지가 열려 있습니다." : "공유 시작을 누르면 팀 다운로드 페이지가 열립니다."}</span>`;
+  const toggle = $("#share-toggle");
+  if (toggle) {
+    toggle.dataset.enabled = String(info.enabled);
+    toggle.textContent = info.enabled ? "공유 중지" : "공유 시작";
+  }
+}
 async function sharing() {
   const content = $("#content");
   content.innerHTML = panel("팀 다운로드 페이지", "", '<div class="panel-body">공유 상태 확인 중…</div>');
   try {
     const info = await api("sharing");
     if (current !== "sharing") return;
-    content.innerHTML = panel("팀 다운로드 페이지", info.enabled ? "공유 중" : "공유 꺼짐", `<div class="panel-body">
+    if (shareKeySelection === null) shareKeySelection = new Set(info.selected_keys.length ? info.selected_keys : state.keys.map(k => k.id));
+    content.innerHTML = '<div id="sharing-status" role="status" aria-live="polite"></div>' + panel("팀 다운로드 페이지", "", `<div class="panel-body">
       <h3>팀 접속 주소</h3>${info.primary_url ? `<p><a href="${esc(info.primary_url)}" target="_blank" rel="noreferrer">${esc(info.primary_url)}</a></p>` : '<p>사용 가능한 로컬망 주소가 없습니다.</p>'}
       ${info.urls.length > 1 ? `<details><summary>다른 네트워크 주소</summary><p class="muted">가상 어댑터나 VPN 주소일 수 있습니다. 팀원과 연결된 네트워크 주소를 사용하세요.</p>${info.urls.filter(url => url !== info.primary_url).map(url => `<p>${esc(url)}</p>`).join("")}</details>` : ""}
       <h3>최근 동기화 PC</h3><div id="share-peer-list"><p class="muted">최근 5분간 원본 설정을 확인한 IP입니다. 같은 IP의 여러 앱은 하나로 표시됩니다.</p>${(info.peers || []).map(p => `<p>${esc(p.ip)} · ${esc(new Date(p.last_seen).toLocaleTimeString())}</p>`).join("") || "<p>아직 동기화 요청이 없습니다.</p>"}</div>
-      <h3>포함할 SSH 키</h3>${state.keys.map(k => `<label class="check-label"><input type="checkbox" name="share-key" value="${esc(k.id)}" ${info.selected_keys.includes(k.id) ? "checked" : ""}>${esc(k.name)}</label>`).join("") || '<p>Keys에서 먼저 키를 등록하세요.</p>'}
+      <h3>포함할 SSH 키</h3><div class="actions share-selection-actions"><button type="button" id="share-select-all">전체 선택</button><button type="button" id="share-clear-all">전체 해제</button><span id="share-selected-count" class="muted" aria-live="polite"></span></div>${state.keys.map(k => `<label class="check-label"><input type="checkbox" name="share-key" value="${esc(k.id)}" ${shareKeySelection.has(k.id) ? "checked" : ""}>${esc(k.name)}</label>`).join("") || '<p>Keys에서 먼저 키를 등록하세요.</p>'}
       <div id="share-host-preview"></div>
       <p class="note">키 포함 배포본에는 선택한 개인 키 원문이 들어갑니다. 공유를 켜면 같은 로컬 서브넷에서 다운로드할 수 있습니다. HTTP 공유이므로 신뢰하는 로컬망에서만 사용하고 공개 저장소에는 올리지 마세요.</p>
       <div class="actions"><button type="button" id="share-prepare" ${state.keys.length ? "" : "disabled"}>선택한 키로 배포본 만들기</button><button type="button" id="share-toggle" class="primary">${info.enabled ? "공유 중지" : "공유 시작"}</button></div>
@@ -308,14 +322,27 @@ async function sharing() {
       <p class="muted">새 배포본으로 등록한 팀원에게 선택한 키 범위의 호스트·터널 추가와 수정이 30초마다 자동 반영됩니다. 원본에서 제거된 항목은 팀원 PC에 보관 표시로 남습니다. 개인 키 변경·추가는 새 배포본을 받아야 합니다. 공유 중지나 앱 종료 시 키 포함 배포본은 폐기되지만 구독 정보는 유지됩니다. 앱을 다시 켜고 공유를 시작하면 기존 구독이 재개됩니다. 관리 화면과 터미널은 공유되지 않습니다. Windows 방화벽은 TCP 9877을 로컬 서브넷에 허용해야 합니다.</p></div>`);
     content.insertAdjacentHTML("beforeend", '<div id="team-sync-panel"></div>');
     renderTeamSync();
+    renderSharingStatus(info);
     const selected = () => [...content.querySelectorAll('[name="share-key"]:checked')].map(input => input.value);
     const preview = () => {
       const ids = selected();
+      shareKeySelection = new Set(ids);
+      $("#share-selected-count").textContent = `${ids.length} / ${state.keys.length}개 선택`;
+      $("#share-select-all").disabled = ids.length === state.keys.length;
+      $("#share-clear-all").disabled = !ids.length;
       const hosts = state.hosts.filter(h => ids.includes(h.key_id));
       $("#share-host-preview").innerHTML = `<p>포함할 호스트 ${hosts.length}개: ${hosts.map(h => esc(h.name)).join(", ") || "없음"}</p>`;
       $("#share-prepare").disabled = !ids.length;
     };
     content.querySelectorAll('[name="share-key"]').forEach(input => input.onchange = preview);
+    $("#share-select-all").onclick = () => {
+      content.querySelectorAll('[name="share-key"]').forEach(input => { input.checked = true; });
+      preview();
+    };
+    $("#share-clear-all").onclick = () => {
+      content.querySelectorAll('[name="share-key"]').forEach(input => { input.checked = false; });
+      preview();
+    };
     preview();
     $("#share-prepare").onclick = async event => {
       const button = event.currentTarget; button.disabled = true;
@@ -324,7 +351,7 @@ async function sharing() {
     };
     $("#share-toggle").onclick = async event => {
       const button = event.currentTarget; button.disabled = true;
-      try { await api("sharing/" + (info.enabled ? "stop" : "start"), "POST"); await sharing(); }
+      try { await api("sharing/" + (button.dataset.enabled === "true" ? "stop" : "start"), "POST"); await sharing(); }
       catch (err) { toast(err.message, true); button.disabled = false; }
     };
   } catch (err) { if (current === "sharing") content.textContent = err.message; }
