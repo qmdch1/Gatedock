@@ -1,5 +1,15 @@
 # SSHDesk
 
+## Windows에서 실행이 차단될 때
+
+**Smart App Control이 SSHDesk 실행을 차단한 경우**, 해당 보호 기능을 끄려면 **PowerShell을 관리자 권한으로 실행**하고 아래 명령을 복사해 입력하세요.
+
+```powershell
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy" -Name "VerifiedAndReputablePolicyState" -Value 0
+```
+
+> 이 명령은 SSHDesk만 허용하는 것이 아니라 PC 전체의 Smart App Control을 끄는 설정입니다. 일반적인 프로그램 오류 해결 명령이 아니며, Windows 버전이나 관리 정책에 따라 적용되지 않을 수 있습니다. 회사 관리 PC에서는 관리자에게 확인하세요. Microsoft는 레지스트리를 통한 변경을 테스트 용도로 안내합니다. [Microsoft 공식 안내](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/test-your-app-with-smart-app-control#configure-smart-app-control-by-using-the-registry)
+
 [![Windows용 SSHDesk 다운로드](docs/images/download-windows.svg)](https://github.com/qmdch1/Gatedock/releases/latest/download/sshdesk.exe)
 
 **[⬇ Windows용 sshdesk.exe 다운로드](https://github.com/qmdch1/Gatedock/releases/latest/download/sshdesk.exe)**
