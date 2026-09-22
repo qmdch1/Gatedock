@@ -43,3 +43,4 @@ ssh-config
 
 # Browser-selected keys persisted beside the local database.
 uploaded-keys/
+uploaded-settings/

@@ -93,13 +93,24 @@ func (s *Server) sharingStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) sharingAction(w http.ResponseWriter, r *http.Request) {
+	s.ops.Lock()
+	defer s.ops.Unlock()
 	switch r.PathValue("action") {
-	case "prepare":
+	case "prepare", "publish":
 		var req struct {
 			KeyIDs []string `json:"key_ids"`
 		}
 		if err := decode(r, &req); err != nil {
 			fail(w, err)
+			return
+		}
+		if r.PathValue("action") == "publish" && len(req.KeyIDs) == 0 {
+			s.stopSharing()
+			if err := s.StartSharing(); err != nil {
+				fail(w, err)
+				return
+			}
+			s.sharingStatus(w, r)
 			return
 		}
 		state, err := s.Store.Snapshot()
@@ -135,6 +146,12 @@ func (s *Server) sharingAction(w http.ResponseWriter, r *http.Request) {
 		s.shareFeed = feed
 		s.sharePublic = public
 		s.shareMu.Unlock()
+		if r.PathValue("action") == "publish" {
+			if err := s.StartSharing(); err != nil {
+				fail(w, err)
+				return
+			}
+		}
 	case "start":
 		if err := s.StartSharing(); err != nil {
 			fail(w, err)

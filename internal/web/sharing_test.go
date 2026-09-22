@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -66,5 +67,23 @@ func TestShareDownloadBoundary(t *testing.T) {
 				t.Fatal("invalid export boundary")
 			}
 		}
+	}
+}
+
+func TestPublishPreparesSelectedKeys(t *testing.T) {
+	app, ts, _ := setup(t)
+	// A non-listening server avoids exposing even synthetic fixtures to the LAN.
+	app.shareServer = &http.Server{}
+	code, body := request(t, app, ts, "POST", "/api/sharing/publish", map[string]any{"key_ids": []string{"key"}})
+	if code != 200 {
+		t.Fatalf("publish: %d %s", code, body)
+	}
+	if len(app.sharePayload) == 0 || app.shareConfig == nil || len(app.shareSelection) != 1 {
+		t.Fatal("missing prepared keys")
+	}
+	previous := append([]byte{}, app.sharePayload...)
+	code, _ = request(t, app, ts, "POST", "/api/sharing/publish", map[string]any{"key_ids": []string{"missing"}})
+	if code != 400 || string(app.sharePayload) != string(previous) {
+		t.Fatal("failed publish changed current bundle")
 	}
 }

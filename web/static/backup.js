@@ -13,6 +13,7 @@ function setupBackupUI() {
       <button type="button" id="backup-export">내보내기</button></div>
       <div class="backup-import-actions">
       <button type="button" id="backup-preview" disabled>Preview</button>
+      <button type="button" id="backup-close" hidden>닫기</button>
       <button type="button" id="backup-apply" class="primary" disabled>Import configuration</button></div></div>
     <div id="backup-summary" aria-live="polite"></div></div>`;
   $("#content").append(box);
@@ -23,7 +24,8 @@ function setupBackupUI() {
   const apply = box.querySelector("#backup-apply");
   const summary = box.querySelector("#backup-summary");
   let pending = null;
-  function reset() { pending = null; apply.disabled = true; preview.disabled = !file.files.length; name.value = file.files[0]?.name || ""; summary.replaceChildren(); }
+  function reset() { pending = null; apply.disabled = true; preview.disabled = !file.files.length; name.value = file.files[0]?.name || ""; summary.replaceChildren(); box.querySelector("#backup-close").hidden = true; }
+  box.querySelector("#backup-close").onclick = () => { reset(); preview.focus(); };
   select.onclick = () => file.click();
   file.onchange = reset;
   box.querySelector("#backup-export").onclick = async (e) => {
@@ -52,7 +54,7 @@ function setupBackupUI() {
       summary.innerHTML = `<h3>추가 예정</h3><p>${Object.entries(result.added).map(([kind, count]) => `${esc(kind)}: ${count}`).join(" · ")}</p>
         <p>Hosts: ${(request.backup.hosts || []).map(h => esc(h.name) + " " + env(h.environment)).join(", ") || "없음"}</p>
         ${result.warnings.map(w => `<p class="note">${esc(w)}</p>`).join("")}`;
-      pending = request; apply.disabled = false;
+      pending = request; apply.disabled = false; box.querySelector("#backup-close").hidden = false;
     } catch (error) { summary.textContent = error.message; toast(error.message, true); }
     finally { preview.disabled = !file.files.length; file.disabled = false; select.disabled = false; }
   };

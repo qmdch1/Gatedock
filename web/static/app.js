@@ -271,8 +271,9 @@ function keyTable(items) {
 }
 function settings() {
   const v = state.settings;
+  const fileField = (name, label) => `<label>${label}<span class="file-path-picker"><input name="${name}" required value="${esc(v[name])}"><button type="button" data-settings-pick="${name}">파일 선택…</button><input type="file" id="settings-${name}-file" hidden></span></label>`;
   $("#content").innerHTML =
-    `<div class="settings-grid">${panel("SSH settings", "원본 config와 known_hosts는 수정하지 않습니다.", `<form id="settings-form" class="panel-body"><label>Known hosts file<input name="known_hosts" required value="${esc(v.known_hosts)}"></label><label>SSH config file<input name="ssh_config" required value="${esc(v.ssh_config)}"></label><div class="actions"><button class="primary">Save settings</button>${button("↓ Import preview", "import")}</div></form>`)}${panel("Security defaults", "로컬에서 실행되는 개인용 연결 도구", `<div class="panel-body"><ul><li>HTTP 및 터널: 127.0.0.1 전용</li><li>SSH 서버 키: known_hosts 또는 검증된 SHA256 지문</li><li>키는 보호된 파일로 보관 · 비밀번호 저장 안 함</li><li>CSRF / WebSocket Origin 검사</li><li>앱 종료 시 터미널과 터널 종료</li><li>시작 시 터널 자동 실행 안 함</li></ul><p class="note">PROD는 빨간색으로 표시됩니다. 가져온 Host의 기본 환경은 DEV이므로 실제 환경에 맞게 수정하세요.</p></div>`)}</div><div id="import-preview"></div>`;
+    `<div class="settings-grid">${panel("SSH settings", "원본 config와 known_hosts는 수정하지 않습니다.", `<form id="settings-form" class="panel-body">${fileField("known_hosts", "Known hosts file")}${fileField("ssh_config", "SSH config file")}<p class="note">파일 선택 후 저장하면 SSHDesk 실행 환경에 복사됩니다. config 안의 키 경로는 실행 환경에 맞게 지정하세요.</p><div class="actions"><button class="primary">Save settings</button>${button("↓ Import preview", "import")}</div></form>`)}${panel("Security defaults", "로컬에서 실행되는 개인용 연결 도구", `<div class="panel-body"><ul><li>HTTP 및 터널: 127.0.0.1 전용</li><li>SSH 서버 키: known_hosts 또는 검증된 SHA256 지문</li><li>키는 보호된 파일로 보관 · 비밀번호 저장 안 함</li><li>CSRF / WebSocket Origin 검사</li><li>앱 종료 시 터미널과 터널 종료</li><li>시작 시 터널 자동 실행 안 함</li></ul><p class="note">PROD는 빨간색으로 표시됩니다. 가져온 Host의 기본 환경은 DEV이므로 실제 환경에 맞게 수정하세요.</p></div>`)}</div><div id="import-preview"></div>`;
   setupBackupUI();
   if (startupImport) {
     const r = startupImport;
@@ -281,15 +282,43 @@ function settings() {
     report.innerHTML = `<div class="panel-head"><div><h2>Startup SSH import</h2><p>시작 시 SSH config 자동 등록 결과</p></div></div><div class="panel-body"><p class="mono wrap">${esc(r.source || "")}</p><p>${r.disabled ? "자동 등록 비활성화 (-no-auto-import)" : r.missing ? "SSH config 파일이 없습니다. 필요하면 수동으로 Host를 등록하세요." : `추가 ${r.imported} · 기존 유지 ${r.existing} · 건너뜀 ${(r.skipped || []).length}`}</p><p class="note">기존 등록 내용과 원본 파일은 보존합니다. 새 Host의 기본 환경은 DEV입니다. 연결 전 환경과 서버 키를 확인하세요.</p>${(r.warnings || []).map(w => `<p class="note">${esc(w)}</p>`).join("")}${(r.skipped || []).map(s => `<p class="wrap"><strong>${esc(s.name)}</strong> · ${esc(s.reason)}</p>`).join("")}</div>`;
     $("#content").prepend(report);
   }
-  $("#settings-form").onsubmit = async (e) => {
+  const form = $("#settings-form");
+  form.querySelectorAll("[data-settings-pick]").forEach(button => {
+    const name = button.dataset.settingsPick;
+    const file = $(`#settings-${name}-file`);
+    button.onclick = () => file.click();
+    file.onchange = () => {
+      const selected = file.files[0];
+      if (!selected) return;
+      if (!selected.size || selected.size > 1024 * 1024) {
+        file.value = ""; toast("비어 있지 않은 1 MiB 이하의 파일을 선택하세요", true); return;
+      }
+      form.elements[name].value = selected.name;
+    };
+    form.elements[name].oninput = () => { file.value = ""; };
+  });
+  form.onsubmit = async (e) => {
     e.preventDefault();
+    const controls = [...form.querySelectorAll("button,input")];
+    const request = Object.fromEntries(new FormData(form));
+    const config = $("#settings-ssh_config-file").files[0];
+    const hosts = $("#settings-known_hosts-file").files[0];
+    controls.forEach(control => control.disabled = true);
     try {
-      await api("settings", "POST", Object.fromEntries(new FormData(e.target)));
+      if ((config?.size || 0) + (hosts?.size || 0) > 1024 * 1024) throw new Error("선택한 파일 합계는 1 MiB 이하여야 합니다");
+      if (config) request.config_content = await fileBase64(config);
+      if (hosts) request.hosts_content = await fileBase64(hosts);
+      await api(config || hosts ? "settings/files" : "settings", "POST", request);
       await refresh(false);
+      if (form.isConnected) {
+        for (const name of ["ssh_config", "known_hosts"]) {
+          form.elements[name].value = state.settings[name];
+          $(`#settings-${name}-file`).value = "";
+        }
+      }
       toast("설정을 저장했습니다");
-    } catch (e) {
-      toast(e.message, true);
-    }
+    } catch (e) { toast(e.message, true); }
+    finally { controls.forEach(control => control.disabled = false); }
   };
 }
 function renderSharingStatus(info) {
@@ -297,30 +326,44 @@ function renderSharingStatus(info) {
   if (!banner) return;
   banner.className = "sharing-status " + (info.enabled ? "is-on" : "is-off");
   banner.innerHTML = `<strong>${info.enabled ? "● 공유 켜짐" : "○ 공유 꺼짐"}</strong><span>${info.enabled ? "팀 다운로드 페이지가 열려 있습니다." : "공유 시작을 누르면 팀 다운로드 페이지가 열립니다."}</span>`;
-  const toggle = $("#share-toggle");
-  if (toggle) {
-    toggle.dataset.enabled = String(info.enabled);
-    toggle.textContent = info.enabled ? "공유 중지" : "공유 시작";
+  const publish = $("#share-publish");
+  if (publish) {
+    publish.dataset.enabled = String(info.enabled);
+    const count = document.querySelectorAll('[name="share-key"]:checked').length;
+    publish.textContent = info.enabled ? "선택 내용 적용" : count ? "공유 시작" : "키 없이 공유 시작";
   }
+  const stop = $("#share-stop");
+  if (stop) stop.hidden = !info.enabled;
+  const copy = $("#share-copy");
+  if (copy) copy.disabled = !info.enabled || !info.primary_url;
+  const url = $("#share-url");
+  if (url) url.value = info.primary_url || "";
+
 }
 async function sharing() {
+  if (current !== "sharing") return;
   const content = $("#content");
   content.innerHTML = panel("팀 다운로드 페이지", "", '<div class="panel-body">공유 상태 확인 중…</div>');
   try {
     const info = await api("sharing");
     if (current !== "sharing") return;
     if (shareKeySelection === null) shareKeySelection = new Set(info.selected_keys.length ? info.selected_keys : state.keys.map(k => k.id));
-    content.innerHTML = '<div id="sharing-status" role="status" aria-live="polite"></div>' + panel("팀 다운로드 페이지", "", `<div class="panel-body">
-      <h3>팀 접속 주소</h3>${info.primary_url ? `<p><a href="${esc(info.primary_url)}" target="_blank" rel="noreferrer">${esc(info.primary_url)}</a></p>` : '<p>사용 가능한 로컬망 주소가 없습니다.</p>'}
-      ${info.urls.length > 1 ? `<details><summary>다른 네트워크 주소</summary><p class="muted">가상 어댑터나 VPN 주소일 수 있습니다. 팀원과 연결된 네트워크 주소를 사용하세요.</p>${info.urls.filter(url => url !== info.primary_url).map(url => `<p>${esc(url)}</p>`).join("")}</details>` : ""}
-      <h3>최근 동기화 PC</h3><div id="share-peer-list"><p class="muted">최근 5분간 원본 설정을 확인한 IP입니다. 같은 IP의 여러 앱은 하나로 표시됩니다.</p>${(info.peers || []).map(p => `<p>${esc(p.ip)} · ${esc(new Date(p.last_seen).toLocaleTimeString())}</p>`).join("") || "<p>아직 동기화 요청이 없습니다.</p>"}</div>
-      <h3>포함할 SSH 키</h3><div class="actions share-selection-actions"><button type="button" id="share-select-all">전체 선택</button><button type="button" id="share-clear-all">전체 해제</button><span id="share-selected-count" class="muted" aria-live="polite"></span></div>${state.keys.map(k => `<label class="check-label"><input type="checkbox" name="share-key" value="${esc(k.id)}" ${shareKeySelection.has(k.id) ? "checked" : ""}>${esc(k.name)}</label>`).join("") || '<p>Keys에서 먼저 키를 등록하세요.</p>'}
-      <div id="share-host-preview"></div>
-      <p class="note">키 포함 배포본에는 선택한 개인 키 원문이 들어갑니다. 공유를 켜면 같은 로컬 서브넷에서 다운로드할 수 있습니다. HTTP 공유이므로 신뢰하는 로컬망에서만 사용하고 공개 저장소에는 올리지 마세요.</p>
-      <div class="actions"><button type="button" id="share-prepare" ${state.keys.length ? "" : "disabled"}>선택한 키로 배포본 만들기</button><button type="button" id="share-toggle" class="primary">${info.enabled ? "공유 중지" : "공유 시작"}</button></div>
-      <p>${info.prepared ? "키 포함 배포본 준비됨 · 받는 PC에서 처음 실행하면 자동 등록됩니다." : "현재 기본 실행파일과 전체 JSON 설정만 공유합니다. 개인 키는 포함되지 않습니다."}</p>
-      <p class="muted">새 배포본으로 등록한 팀원에게 선택한 키 범위의 호스트·터널 추가와 수정이 30초마다 자동 반영됩니다. 원본에서 제거된 항목은 팀원 PC에 보관 표시로 남습니다. 개인 키 변경·추가는 새 배포본을 받아야 합니다. 공유 중지나 앱 종료 시 키 포함 배포본은 폐기되지만 구독 정보는 유지됩니다. 앱을 다시 켜고 공유를 시작하면 기존 구독이 재개됩니다. 관리 화면과 터미널은 공유되지 않습니다. Windows 방화벽은 TCP 9877을 로컬 서브넷에 허용해야 합니다.</p></div>`);
-    content.insertAdjacentHTML("beforeend", '<div id="team-sync-panel"></div>');
+    content.innerHTML = '<div id="sharing-status" role="status" aria-live="polite"></div>' + panel("팀원에게 공유하기", "키와 연결 설정을 함께 전달합니다.", `<div class="panel-body">
+      <div class="actions share-main-actions"><button type="button" id="share-publish" class="primary">${info.enabled ? "선택 내용 적용" : "공유 시작"}</button><button type="button" id="share-stop" ${info.enabled ? "" : "hidden"}>공유 중지</button></div>
+      <div class="share-address"><label>팀원에게 보낼 주소<input id="share-url" readonly value="${esc(info.primary_url || "")}" placeholder="사용 가능한 로컬망 주소가 없습니다"></label><button type="button" id="share-copy" ${info.enabled && info.primary_url ? "" : "disabled"}>주소 복사</button></div>
+      <p id="share-package-status" class="muted">${info.enabled ? (info.prepared ? "키와 호스트·터널이 포함된 배포본을 공유 중입니다." : "키 없이 프로그램과 설정만 공유 중입니다.") : "공유 시작을 누르면 선택한 키와 설정으로 배포본을 준비합니다."}</p>
+      <details class="share-options"><summary>공유할 키 · <span id="share-selected-count"></span></summary>
+      <div class="actions share-selection-actions"><button type="button" id="share-select-all">전체 선택</button><button type="button" id="share-clear-all">전체 해제</button></div>
+      ${state.keys.map(k => `<label class="check-label"><input type="checkbox" name="share-key" value="${esc(k.id)}" ${shareKeySelection.has(k.id) ? "checked" : ""}>${esc(k.name)}</label>`).join("") || '<p>등록된 키가 없어 설정만 공유합니다.</p>'}
+      <div id="share-host-preview"></div></details>
+      <p class="note">선택한 개인 키가 포함됩니다. 신뢰하는 같은 로컬망의 팀원에게만 주소를 전달하세요.</p>
+      <details class="share-options"><summary>접속 현황·추가 안내</summary>
+      <h3>최근 동기화 PC</h3><div id="share-peer-list">${(info.peers || []).map(p => `<p>${esc(p.ip)} · ${esc(new Date(p.last_seen).toLocaleTimeString())}</p>`).join("") || "<p>아직 동기화 요청이 없습니다.</p>"}</div>
+      ${info.urls.length > 1 ? `<h3>다른 네트워크 주소</h3>${info.urls.filter(url => url !== info.primary_url).map(url => `<p>${esc(url)}</p>`).join("")}` : ""}
+      <p>Windows 팀 배포본은 Windows에서 제공합니다. Mac은 SSH 설정 묶음을 받으면 됩니다. 새 Windows 팀 배포본으로 등록한 팀원에게 호스트·터널 변경이 30초마다 반영되며 삭제된 항목은 보관됩니다. 키 변경 시에는 새 배포본을 받으세요.</p>
+      <p>공유 중지·앱 종료 시 배포본은 폐기됩니다. 관리 화면과 터미널은 공유하지 않습니다. 접속이 안 되면 방화벽의 로컬 서브넷 TCP 9877 허용을 확인하세요.</p></details>
+      </div>`);
+    content.insertAdjacentHTML("beforeend", '<details class="share-options"><summary>내 PC가 받은 공유 설정 관리</summary><div id="team-sync-panel"></div></details>');
     renderTeamSync();
     renderSharingStatus(info);
     const selected = () => [...content.querySelectorAll('[name="share-key"]:checked')].map(input => input.value);
@@ -332,7 +375,7 @@ async function sharing() {
       $("#share-clear-all").disabled = !ids.length;
       const hosts = state.hosts.filter(h => ids.includes(h.key_id));
       $("#share-host-preview").innerHTML = `<p>포함할 호스트 ${hosts.length}개: ${hosts.map(h => esc(h.name)).join(", ") || "없음"}</p>`;
-      $("#share-prepare").disabled = !ids.length;
+      $("#share-publish").textContent = $("#share-publish").dataset.enabled === "true" ? "선택 내용 적용" : ids.length ? "공유 시작" : "키 없이 공유 시작";
     };
     content.querySelectorAll('[name="share-key"]').forEach(input => input.onchange = preview);
     $("#share-select-all").onclick = () => {
@@ -344,15 +387,22 @@ async function sharing() {
       preview();
     };
     preview();
-    $("#share-prepare").onclick = async event => {
-      const button = event.currentTarget; button.disabled = true;
-      try { await api("sharing/prepare", "POST", {key_ids:selected()}); await sharing(); toast("키와 호스트를 포함한 배포본을 준비했습니다"); }
-      catch (err) { toast(err.message,true); button.disabled=false; }
+    const performShare = async (action) => {
+      const ids = selected();
+      content.querySelectorAll("button,input").forEach(control => control.disabled = true);
+      try {
+        await api("sharing/" + action, "POST", action === "publish" ? {key_ids: ids} : {});
+        await sharing();
+        toast(action === "stop" ? "공유를 중지했습니다" : "공유 준비가 끝났습니다. 주소를 팀원에게 전달하세요.");
+      } catch (err) {
+        await sharing(); toast(err.message, true);
+      }
     };
-    $("#share-toggle").onclick = async event => {
-      const button = event.currentTarget; button.disabled = true;
-      try { await api("sharing/" + (button.dataset.enabled === "true" ? "stop" : "start"), "POST"); await sharing(); }
-      catch (err) { toast(err.message, true); button.disabled = false; }
+    $("#share-publish").onclick = () => performShare("publish");
+    $("#share-stop").onclick = () => performShare("stop");
+    $("#share-copy").onclick = async () => {
+      try { await navigator.clipboard.writeText($("#share-url").value); toast("공유 주소를 복사했습니다"); }
+      catch { $("#share-url").select(); toast("주소가 선택되었습니다. Ctrl+C 또는 ⌘C로 복사하세요."); }
     };
   } catch (err) { if (current === "sharing") content.textContent = err.message; }
 }
@@ -537,11 +587,21 @@ $("#editor-form").onsubmit = async (e) => {
     submit.disabled = false;
   }
 };
+async function fileBase64(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  bytes.fill(0);
+  return btoa(binary);
+}
 async function importPreview() {
   if (current !== "settings") {
     location.hash = "#settings";
     current = "settings";
     renderPage();
+  }
+  if ($("#settings-ssh_config-file")?.files.length) {
+    toast("선택한 SSH config를 먼저 Save settings로 저장하세요", true); return;
   }
   const path = $("#settings-form").elements.ssh_config.value;
   const container = $("#import-preview");
