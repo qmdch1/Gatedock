@@ -126,6 +126,58 @@ Windows를 우선 지원하며, 실행 시 별도의 SSH 클라이언트나 Node
 
 현재 암호가 설정된 개인 키, SSH agent, 하드웨어 키, SSH 인증서, SFTP, 원격 포워딩 및 SOCKS는 지원하지 않습니다. SSH config의 일부 고급 설정도 지원하지 않으며 가져오기 화면에서 확인할 수 있습니다. 팀 공유는 선택한 키 범위의 설정 배포와 Windows 앱 간 자동 갱신을 지원하며, 중앙 계정·권한 관리 기능은 제공하지 않습니다.
 
+## Docker로 실행하기
+
+Docker가 설치되어 있다면 아래 명령으로 **프로그램 빌드와 백그라운드 실행**을 한 번에 할 수 있습니다. SSH 키와 접속할 서버 정보는 본인이 준비해야 합니다.
+
+```sh
+git clone https://github.com/qmdch1/Gatedock.git
+cd Gatedock
+docker compose up -d --build
+```
+
+실행 후 브라우저에서 <http://127.0.0.1:9876>을 엽니다. 이미 실행 중인 Windows 프로그램이 같은 포트를 사용한다면 먼저 종료하세요. 설정은 Docker 볼륨에 저장되어 컨테이너를 다시 만들어도 유지됩니다.
+
+- **Linux:** Docker Engine과 Compose가 필요합니다.
+- **Windows / Mac:** Docker Desktop 4.34 이상에서 **Settings → Resources → Network → Enable host networking**을 켜야 합니다. Linux 컨테이너 모드를 사용하세요. 로컬 관리 화면과 터널을 연결하기 위해 host 네트워크를 사용합니다. [Docker 공식 안내](https://docs.docker.com/engine/network/drivers/host/)
+
+```sh
+# 실행 상태 확인
+docker compose ps
+
+# 종료 (저장된 설정은 유지)
+docker compose down
+```
+
+<details>
+<summary>Docker에서 SSH 키와 기존 접속 설정 사용하기</summary>
+
+프로젝트의 `local/ssh` 폴더에 사용할 키와 필요한 `config`, `known_hosts` 파일을 넣으세요. 이 폴더는 컨테이너의 `/home/sshdesk/.ssh`에 읽기 전용으로 연결되며, Git과 이미지에서 제외됩니다. Linux에서는 컨테이너 사용자 UID 1000이 키를 읽을 수 있어야 합니다.
+
+프로그램의 키 경로는 Windows 경로 대신 `/home/sshdesk/.ssh/키파일명`으로 입력합니다. `config`를 함께 넣으면 시작할 때 새 호스트를 읽어 등록합니다. `IdentityFile`에도 컨테이너에서 보이는 경로를 사용하세요. 기존 Windows 설정파일의 `C:\...` 경로는 그대로 사용할 수 없습니다.
+
+다른 폴더를 연결하려면 실행 전에 `SSH_KEY_DIR` 환경변수에 그 폴더의 절대 경로를 지정합니다. 키를 Dockerfile에 복사하거나 이미지에 포함하지 마세요.
+
+Docker에서는 Windows 파일 선택창과 키 포함 Windows 실행파일 배포를 지원하지 않습니다. SSH 키 경로는 직접 입력하고, 터널의 웹 페이지는 브라우저 주소창에 `http://127.0.0.1:설정한포트`를 입력해 여세요. Windows 팀 배포본을 만들려면 Windows 실행파일을 사용하세요.
+
+</details>
+
+## Docker 이미지를 클라우드에 보관하기
+
+**가능합니다.** GitHub의 컨테이너 저장소인 **GHCR**에 이미지를 올리면 다른 PC나 클라우드 서버에서 받아 실행할 수 있습니다. 이미지는 프로그램만 담고, 개인 키·접속 설정·DB는 포함하지 않습니다.
+
+이 저장소의 **Actions → Publish container image → Run workflow**를 실행하면 이미지를 빌드해 `ghcr.io/qmdch1/gatedock:latest`와 해당 커밋 태그로 올립니다. 자동 게시를 원하지 않을 때 실행되지 않도록 수동 실행 방식으로 구성했습니다. **워크플로를 처음 실행하기 전에는 해당 이미지가 게시되어 있지 않습니다.** [GitHub 공식 안내](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)
+
+게시 후에는 다음과 같이 받을 수 있습니다. 비공개 패키지는 먼저 GHCR 로그인이 필요하며, 공개 배포 여부는 GitHub Packages에서 설정합니다.
+
+```sh
+docker pull ghcr.io/qmdch1/gatedock:latest
+```
+
+받은 이미지를 사용하려면 `compose.yaml`의 `image` 값을 위 주소로 바꾸고 `docker compose up -d --no-build`로 실행하세요. 게시 이미지는 Linux amd64용입니다.
+
+클라우드 서버에서 실행할 수도 있지만, **현재 관리 화면에는 사용자 로그인 기능이 없습니다.** 서버의 로컬 주소를 SSH 포워딩 등으로 연결해 사용하고 관리 포트를 인터넷에 공개하지 마세요. 이미지를 저장소에 올리는 것만으로 웹 서비스가 배포되거나 팀 설정이 공유되지는 않습니다.
+
 ## 소스에서 빌드하기
 
 Go 버전과 의존성은 [go.mod](go.mod)를 참고하세요.

@@ -1,0 +1,19 @@
+services:
+  sshdesk:
+    build: .
+    image: gatedock:local
+    # Required: the app and all dynamically created tunnels bind to loopback.
+    network_mode: host
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    volumes:
+      - sshdesk-data:/data
+      - ${SSH_KEY_DIR:-./local/ssh}:/home/sshdesk/.ssh:ro
+
+volumes:
+  sshdesk-data:

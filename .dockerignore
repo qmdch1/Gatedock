@@ -1,0 +1,26 @@
+# Allow only build inputs. Local SSH files, bundles, databases and exports never enter the context.
+**
+!Dockerfile
+!.dockerignore
+!go.mod
+!go.sum
+!cmd/
+!cmd/sshdesk/
+!cmd/sshdesk/*.go
+!internal/
+!internal/**/
+!internal/**/*.go
+!internal/database/migrations/*.sql
+!web/
+!web/assets.go
+!web/templates/
+!web/templates/*.html
+!web/static/
+!web/static/*.js
+!web/static/*.css
+!web/static/vendor/
+!web/static/vendor/*
+!THIRD_PARTY_NOTICES.md
+!licenses/
+!licenses/**
+**/*_test.go
