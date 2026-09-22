@@ -99,9 +99,14 @@ async function refresh(render = true) {
   $("#tunnel-count").textContent = Object.values(tunnelStatus).filter(
     (t) => t.state === "running",
   ).length;
-  if (render) renderPage();
+  if (render && !(current === "settings" && settingsFileDirty)) renderPage();
 }
 function navigate() {
+  if (current === "settings" && settingsFileDirty && location.hash.split("/")[0] === "#settings") return;
+  if (current === "settings" && settingsFileDirty && location.hash.split("/")[0] !== "#settings") {
+    if (!confirm("저장하지 않은 파일 수정 내용을 버리고 이동할까요?")) { location.hash = "#settings"; return; }
+    settingsFileDirty = false;
+  }
   const hash = location.hash.slice(1).split("/");
   current = hash[0] === "services" ? "tunnels" : (pages[hash[0]] ? hash[0] : "dashboard");
   filter = "";
@@ -271,10 +276,11 @@ function keyTable(items) {
 }
 function settings() {
   const v = state.settings;
-  const fileField = (name, label) => `<label>${label}<span class="file-path-picker"><input name="${name}" required value="${esc(v[name])}"><button type="button" data-settings-pick="${name}">파일 선택…</button><input type="file" id="settings-${name}-file" hidden></span></label>`;
+  const fileField = (name, label) => `<div class="settings-file-field"><button type="button" class="settings-file-link" data-settings-open="${name}">${label} ↗ 열기</button><span class="file-path-picker"><input name="${name}" aria-label="${label}" required value="${esc(v[name])}"><button type="button" data-settings-pick="${name}">파일 선택…</button><input type="file" id="settings-${name}-file" hidden></span></div>`;
   $("#content").innerHTML =
-    `<div class="settings-grid">${panel("SSH settings", "원본 config와 known_hosts는 수정하지 않습니다.", `<form id="settings-form" class="panel-body">${fileField("known_hosts", "Known hosts file")}${fileField("ssh_config", "SSH config file")}<p class="note">파일 선택 후 저장하면 SSHDesk 실행 환경에 복사됩니다. config 안의 키 경로는 실행 환경에 맞게 지정하세요.</p><div class="actions"><button class="primary">Save settings</button>${button("↓ Import preview", "import")}</div></form>`)}${panel("Security defaults", "로컬에서 실행되는 개인용 연결 도구", `<div class="panel-body"><ul><li>HTTP 및 터널: 127.0.0.1 전용</li><li>SSH 서버 키: known_hosts 또는 검증된 SHA256 지문</li><li>키는 보호된 파일로 보관 · 비밀번호 저장 안 함</li><li>CSRF / WebSocket Origin 검사</li><li>앱 종료 시 터미널과 터널 종료</li><li>시작 시 터널 자동 실행 안 함</li></ul><p class="note">PROD는 빨간색으로 표시됩니다. 가져온 Host의 기본 환경은 DEV이므로 실제 환경에 맞게 수정하세요.</p></div>`)}</div><div id="import-preview"></div>`;
+    `<div class="settings-grid">${panel("SSH settings", "파일 이름을 누르면 오른쪽에서 편집할 수 있습니다.", `<form id="settings-form" class="panel-body">${fileField("known_hosts", "Known hosts file")}${fileField("ssh_config", "SSH config file")}<p class="note">파일 선택 후 저장하면 SSHDesk 실행 환경에 복사됩니다. config 안의 키 경로는 실행 환경에 맞게 지정하세요.</p><div class="actions"><button class="primary">Save settings</button>${button("↓ Import preview", "import")}</div></form>`)}${panel("파일 편집", "SSH config · known_hosts", `<div class="panel-body settings-editor"><p id="settings-editor-path" class="mono wrap">왼쪽에서 편집할 파일 이름을 누르세요.</p><textarea id="settings-editor-text" aria-label="설정 파일 내용" spellcheck="false" disabled></textarea><div class="actions"><button type="button" id="settings-editor-save" class="primary" disabled>파일 저장</button><button type="button" id="settings-editor-reload" disabled>다시 열기</button><span id="settings-editor-status" role="status"></span></div></div>`)}</div><div id="import-preview"></div>`;
   setupBackupUI();
+  setupSettingsEditor();
   if (startupImport) {
     const r = startupImport;
     const report = document.createElement("section");

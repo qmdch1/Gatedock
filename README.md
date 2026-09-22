@@ -45,7 +45,7 @@ Tunnels에서 포트 연결과 웹 바로가기를 함께 관리합니다.
 3. 기존 `%USERPROFILE%\.ssh\config`가 있으면 새 호스트와 키 경로를 자동으로 등록합니다. 직접 등록하려면 **Keys → Add key**, **Hosts → Add host**를 사용합니다.
 4. 호스트의 **Terminal**로 접속하거나, **Tunnels → Add tunnel**에서 포트 연결을 등록합니다. 웹 서비스라면 선택 항목인 웹 바로가기 이름과 URL도 입력하세요.
 
-개인 키는 파일 선택 또는 경로 입력으로 등록합니다. Settings의 SSH config·known_hosts도 Windows·Mac 브라우저에서 파일을 선택할 수 있습니다. 저장하면 SSHDesk 실행 환경에 복사되며 원본은 유지됩니다. config 내부의 키 경로는 실행 환경에 맞게 지정하세요. Bastion을 거치는 서버는 Host의 **Jump host**에 경유할 호스트를 지정하세요. 서버 확인에는 해당 PC의 `known_hosts` 또는 별도로 확인한 서버 지문을 사용합니다.
+개인 키는 파일 선택 또는 경로 입력으로 등록합니다. Settings의 SSH config·known_hosts도 Windows·Mac 브라우저에서 파일을 선택할 수 있습니다. 저장하면 SSHDesk 실행 환경에 복사되며 원본은 유지됩니다. config 내부의 키 경로는 실행 환경에 맞게 지정하세요. 파일 이름의 **열기**를 누르면 오른쪽에서 내용을 편집할 수 있으며, **파일 저장**은 현재 등록된 파일에 직접 반영합니다. Bastion을 거치는 서버는 Host의 **Jump host**에 경유할 호스트를 지정하세요. 서버 확인에는 해당 PC의 `known_hosts` 또는 별도로 확인한 서버 지문을 사용합니다.
 
 프로그램을 종료하면 SSH 연결과 터널도 종료됩니다. 설정은 `%LOCALAPPDATA%\SSHDesk\sshdesk.db`에 남으므로 실행파일을 교체하거나 다시 실행해도 유지됩니다.
 

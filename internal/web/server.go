@@ -108,6 +108,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/keys/pick-file", s.pickKeyFile)
 	mux.HandleFunc("POST /api/keys/upload", s.uploadKey)
 	mux.HandleFunc("POST /api/settings/files", s.uploadSettings)
+	mux.HandleFunc("POST /api/settings/editor/{action}", s.settingsEditor)
 	mux.HandleFunc("GET /api/sharing", s.sharingStatus)
 	mux.HandleFunc("POST /api/sharing/{action}", s.sharingAction)
 	mux.HandleFunc("POST /api/team-sync/{action}", s.teamAction)
