@@ -1,0 +1,69 @@
+name: Release
+
+# Builds the clean public Windows executable and attaches it to the GitHub
+# Release for the tag. The asset name `sshdesk.exe` must not change: the
+# README links to releases/latest/download/sshdesk.exe.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and upload assets for (for example v1.5.10)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Vet and test
+        run: |
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { throw 'go vet failed' }
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw 'go test failed' }
+
+      - name: Build sshdesk.exe
+        env:
+          CGO_ENABLED: "0"
+          GOOS: windows
+          GOARCH: amd64
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          go build -trimpath -ldflags '-s -w' -o dist/sshdesk.exe ./cmd/sshdesk
+          if ($LASTEXITCODE -ne 0) { throw 'build failed' }
+
+      - name: Write SHA256 checksum
+        run: |
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath dist/sshdesk.exe).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText("$PWD/dist/sshdesk.exe.sha256", "$hash  sshdesk.exe`n")
+          Get-Content dist/sshdesk.exe.sha256
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          fail_on_unmatched_files: true
+          files: |
+            dist/sshdesk.exe
+            dist/sshdesk.exe.sha256
